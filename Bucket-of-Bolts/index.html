@@ -310,7 +310,7 @@ const T=s=>esc(s).replace(/\[\[(\w+)(?:\|([^\]]+))?\]\]/g,(m,k,d)=>`<span class=
 const rnd=n=>Math.floor(Math.random()*n);
 function ld(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
-let S=Object.assign({size:1,font:"verdana",theme:"blush",rest:"full",sound:false,dice:"on"},ld(SKEY)||{});
+let S=Object.assign({size:1,font:"verdana",theme:"blush",rest:"full",sound:true,dice:"on"},ld(SKEY)||{});
 let G=null,TUT=false,SAVED_G=null,ASKCB=null,restTimer=null,audio=null,scrollFlag=false;
 let UI={ch:{type:"trait",mode:"add",text:""}};
 const FONTS={verdana:"Verdana,Geneva,sans-serif",arial:"Arial,Helvetica,sans-serif",comic:"'Comic Sans MS','Comic Neue',cursive,sans-serif",serif:"Georgia,serif"};
@@ -476,8 +476,8 @@ function sRest(){const r=G.rest,left=Math.max(0,Math.ceil((r.end-Date.now())/100
  <svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="6"/><circle id="rring" cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="${done?326.7:326.7*(1-left/r.dur)}" transform="rotate(-90 60 60)"/></svg>
  <div class="time" id="rtime">${done?"Done":Math.floor(left/60)+":"+String(left%60).padStart(2,"0")}</div>
  <p class="lead">Picture ${esc(th)}</p><p class="small">If your mind wanders, that is fine. Your ship's mind wanders too.${S.rest==="quick"&&!r.epi?` Quick rest is on (the book says ${fmt(r.sec)}). Change this in Settings.`:""}</p>
- <div class="row" style="justify-content:center">${done?`<button class="btn" data-a="restDone">${r.epi?"Read my story":"A new captain arrives →"}</button>`:`<button class="btn sec" data-a="skipRest">Skip the wait</button>`}<button class="btn sec" data-a="sound">${S.sound?"🔇 Sound off":"🔈 Ambient sound"}</button></div>
- <p class="small">The official soundtrack by Christopher Michael Roberts comes with the game's downloads.</p></div>`}
+ <div class="row" style="justify-content:center">${done?`<button class="btn" data-a="restDone">${r.epi?"Read my story":"A new captain arrives →"}</button>`:`<button class="btn sec" data-a="skipRest">Skip the wait</button>`}<button class="btn sec" data-a="sound">${S.sound?"🔇 Turn music off":"🔈 Turn music on"}</button></div>
+ <p class="small">Rest music from the official soundtrack by Christopher Michael Roberts.</p></div>`}
 
 function sTables(){const q=G.tq[G.tqi],tp=G.tp,allowed=restAllowed(q.kind);
  return `<div class="step">Change ${G.tqi+1} of ${G.tq.length} after your Rest${q.opt?" (optional)":""}</div><div class="bar"><i style="width:${(G.tqi+1)/G.tq.length*100}%"></i></div><h2>The galaxy changes</h2><p>Time has passed, so something about you or the galaxy shifts.</p>
@@ -537,12 +537,21 @@ function render(){
 }
 
 /* ---------- REST TIMER AND SOUND ---------- */
-function tickStop(){clearInterval(restTimer);restTimer=null;if(!(G&&G.stage==="rest"))stopAmbient()}
-function tickStart(){clearInterval(restTimer);if(S.sound)startAmbient();
+let REST_AUDIO=null;const MUSIC_mp3="mp3";
+function musicFail(a){if(REST_AUDIO===a){REST_AUDIO=null;if(S.sound&&G&&G.stage==="rest"&&!G.rest.done)startAmbient()}}
+function musicStart(){
+ if(!S.sound||TUT||!G||!G.rest)return false;
+ const sec=G.rest.epi?60:G.rest.sec,src="audio/"+sec+"s."+MUSIC_mp3;
+ if(REST_AUDIO&&REST_AUDIO.__src===src)return true;
+ stopAmbient();
+ try{const a=new Audio(src);a.__src=src;a.volume=.8;a.onerror=()=>musicFail(a);REST_AUDIO=a;const p=a.play();if(p&&p.catch)p.catch(()=>musicFail(a));return true}catch(e){return false}}
+function musicStop(){if(!REST_AUDIO)return;const a=REST_AUDIO;REST_AUDIO=null;let v=a.volume;const t=setInterval(()=>{v-=.1;if(v<=0.05){clearInterval(t);try{a.pause()}catch(e){}}else a.volume=v},80)}
+function tickStop(){clearInterval(restTimer);restTimer=null;if(!(G&&G.stage==="rest")){stopAmbient();musicStop()}}
+function tickStart(){clearInterval(restTimer);if(S.sound&&!G.rest.done&&!musicStart())startAmbient();
  restTimer=setInterval(()=>{if(!G||G.stage!=="rest"||G.rest.done){clearInterval(restTimer);return}
   const left=Math.max(0,Math.ceil((G.rest.end-Date.now())/1000));
   const t=$("#rtime"),r=$("#rring");if(t)t.textContent=Math.floor(left/60)+":"+String(left%60).padStart(2,"0");if(r)r.setAttribute("stroke-dashoffset",326.7*(1-left/G.rest.dur));
-  if(left<=0){G.rest.done=true;chime();save();render()}},250)}
+  if(left<=0){G.rest.done=true;if(!REST_AUDIO)chime();save();render()}},250)}
 function startAmbient(){if(audio)return;try{const C=new(window.AudioContext||window.webkitAudioContext)(),m=C.createGain();m.gain.value=0;m.connect(C.destination);m.gain.linearRampToValueAtTime(.06,C.currentTime+3);const os=[98,146.83,196].map((f,i)=>{const o=C.createOscillator();o.type="triangle";o.frequency.value=f;const g=C.createGain();g.gain.value=.4/(i+1);const l=C.createOscillator();l.frequency.value=.04+i*.03;const lg=C.createGain();lg.gain.value=.25;l.connect(lg);lg.connect(g.gain);o.connect(g);g.connect(m);o.start();l.start();return[o,l]});audio={C,m,os}}catch(e){}}
 function stopAmbient(){if(!audio)return;try{audio.m.gain.linearRampToValueAtTime(0,audio.C.currentTime+.8);const a=audio;setTimeout(()=>{try{a.os.forEach(p=>p.forEach(o=>o.stop()));a.C.close()}catch(e){}},900)}catch(e){}audio=null}
 function chime(){try{const C=new(window.AudioContext||window.webkitAudioContext)(),o=C.createOscillator(),g=C.createGain();o.frequency.value=523;g.gain.setValueAtTime(.15,C.currentTime);g.gain.exponentialRampToValueAtTime(.001,C.currentTime+2);o.connect(g);g.connect(C.destination);o.start();o.stop(C.currentTime+2)}catch(e){}}
@@ -592,9 +601,9 @@ const A={
  startRest(){const o=timeOpt(G.act,G.tsel);if(!o.s){finishRest(o);return}
   let dur=S.rest==="quick"||TUT?Math.max(3,Math.round(o.s/(TUT?1:10))):o.s;if(TUT)dur=Math.min(dur,5);
   G.rest={id:o.id,sec:o.s,dur,end:Date.now()+dur*1000,done:false};go("rest")},
- skipRest(){G.rest.done=true;render()},
+ skipRest(){musicStop();G.rest.done=true;render()},
  restDone(){if(G.rest.epi){stopAmbient();go("journal");return}finishRest(timeOpt(G.act,G.rest.id))},
- sound(){S.sound=!S.sound;sv(SKEY,S);if(S.sound)startAmbient();else stopAmbient();render()},
+ sound(){S.sound=!S.sound;sv(SKEY,S);if(!S.sound){stopAmbient();musicStop()}render()},
  tNext(){const tp=G.tp,r=G.rests[G.rests.length-1];r.picks.push({tbl:tp.tbl,idx:tp.idx,answer:tp.answer,changes:tp.changes});G.tqi++;UI.ch={type:"trait",mode:"add",text:""};if(G.tqi<G.tq.length){newTP();go("tables")}else nextKeeper()},
  tSkip(){nextKeeper()},
  epiRest(){G.rest={id:"epi",epi:true,sec:0,dur:60,end:Date.now()+60000,done:false};go("rest")},
