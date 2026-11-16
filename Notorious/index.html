@@ -161,6 +161,22 @@ table.t td,table.t th{border-bottom:1px solid var(--line);padding:.25rem .4rem;t
 body.meeting .peekpill{display:none}
 .peekpill .btn{flex:0 1 auto}
 
+
+body{display:flex;flex-direction:column}#root{flex:1;min-height:0;display:flex;flex-direction:column}#app{flex:1;height:auto;min-height:0;grid-template-rows:auto auto 1fr auto}
+#now{padding:.45rem .9rem;background:var(--panel);border-bottom:1px solid var(--line);border-left:6px solid var(--acc);font-size:.98rem}
+.lab{display:block;font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;color:var(--mut)}
+.coach{background:var(--panel2);border-left:6px solid var(--acc);padding:.5rem .9rem;border-radius:.9rem .9rem 0 0;font-size:.96rem}
+button.gl{background:none;border:0;border-bottom:2px dotted var(--acc);color:inherit;font:inherit;font-weight:700;padding:0;cursor:pointer}
+.gllist dt{font-weight:700;color:var(--acc);margin-top:.7em}.gllist dd{margin:.1em 0 0}
+.helplist .btn{display:block;width:100%;text-align:left}.helplist .hint{margin:.15em 0 .8em}
+.guide{position:fixed;top:2.8rem;right:.6rem;width:min(23rem,calc(100vw - 1.2rem));z-index:450;background:var(--panel);color:var(--tx);border:2px solid var(--acc);border-radius:.8rem;padding:.6rem .9rem .7rem;box-shadow:0 .5rem 2rem #000c;max-height:70vh;overflow:auto}
+.guide h3{margin:.2em 0;color:var(--acc)}.guide p{margin:.3em 0}.gtop{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap}
+.gstep{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}
+.grow{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.5rem}
+.ghl2{outline:3px solid var(--acc2)!important;outline-offset:3px;animation:ghl2 1.4s ease-in-out infinite}
+@keyframes ghl2{50%{outline-color:transparent}}
+body.guiding .ovl{padding-right:25rem}
+@media(max-width:60rem){.guide{top:2.8rem;bottom:auto;right:.5rem;left:.5rem;width:auto;max-height:34vh}body.guiding .ovl{padding-right:1rem;padding-top:calc(var(--gh,10rem) + 3rem);align-items:flex-start}body.guiding .modal{max-height:calc(100vh - var(--gh,10rem) - 4.2rem)}}
 </style>
 </head>
 <body><script id="backbar">(function(){var p=location.pathname,flat=!/\/(index\.html)?$/.test(p);var a=document.createElement("a");a.id="backbar";a.textContent="← Back to all games";a.href=flat?"index.html":"../";a.setAttribute("style","display:block;box-sizing:border-box;width:100%;padding:7px 14px;background:#14141c;color:#fff;font:600 15px/1.3 system-ui,Segoe UI,Arial,sans-serif;text-decoration:none;border-bottom:1px solid #444;position:relative;z-index:1000");document.body.insertBefore(a,document.body.firstChild)})();</script>
@@ -2202,7 +2218,7 @@ NM.books.O = {
     const st = U.clear(U.$('#stage')); const G = app.G;
     if (!G) {
       st.append(h('div', { class: 'banner' }, h('img', { src: NMA('art/cover_notorious.jpg'), alt: '' }), h('div', { class: 'in' }, h('div', { class: 'kick' }, 'Companion app'), h('h2', null, 'Notorious & Outsiders'), h('p', null, 'Solo bounty hunting in a galaxy at war.'))),
-        h('div', { class: 'card' }, h('div', { class: 'row' }, h('button', { class: 'btn pri big', id: 'btn-new', onclick: app.newGame }, 'New campaign'), h('button', { class: 'btn', id: 'btn-continue', onclick: app.continueLast }, 'Continue last game'), h('button', { class: 'btn', onclick: app.loadMenu }, 'Load a game'), h('button', { class: 'btn', onclick: () => NM.tutorial() }, 'Guided tutorial')),
+        h('div', { class: 'card' }, h('div', { class: 'row' }, h('button', { class: 'btn big' + (U.settings.tutorialDone ? '' : ' pri'), id: 'btn-guide', onclick: () => NM.startGuide() }, 'Guided first hunt'), h('button', { class: 'btn big' + (U.settings.tutorialDone ? ' pri' : ''), id: 'btn-new', onclick: app.newGame }, 'New campaign'), h('button', { class: 'btn', id: 'btn-continue', onclick: app.continueLast }, 'Continue last game'), h('button', { class: 'btn', onclick: app.loadMenu }, 'Load a game'), h('button', { class: 'btn', onclick: () => NM.tutorial() }, 'Guided tutorial')),
           h('p', { class: 'hint' }, 'Combat is never automatic. Every Attack and defence roll is a click from you. The game runs fully offline.')));
       return;
     }
@@ -2324,14 +2340,14 @@ NM.books.O = {
       tg('narrator', 'Enable the narrator'),
       h('div', { class: 'q' }, h('label', null, 'API key'), h('input', { type: 'password', autocomplete: 'off', value: s.apiKey, 'aria-label': 'Anthropic API key', oninput: e => { s.apiKey = e.target.value; upd(); } })),
       h('div', { class: 'q' }, h('label', null, 'Model'), h('input', { type: 'text', value: s.model, 'aria-label': 'Model', oninput: e => { s.model = e.target.value; upd(); } })),
-      h('h3', null, 'Help'), h('button', { class: 'btn', onclick: () => { m.close(); NM.tutorial(); } }, 'Replay the tutorial'),
+      h('h3', null, 'Help'), h('button', { class: 'btn', onclick: () => { m.close(); NM.help(); } }, 'Open Help'),
       h('p', { class: 'hint' }, 'Sound effects: Kenney (CC0) and the CAPTNPHANTOM UI pack, played from the audio folder if present. Font: Atkinson Hyperlegible (Braille Institute, OFL).')), h('div', { class: 'mf' }, h('button', { class: 'btn pri', onclick: () => m.close() }, 'Done'))] });
   };
   function renderHead() {
     const G = app.G, top = U.clear(U.$('#top'));
     top.append(h('h1', null, 'Notorious / Outsiders'), G ? h('span', { class: 'mut' }, G.nomad.name + ' · ' + ({ N: 'Notorious', O: 'Outsiders', T: 'Trilogy' })[G.type]) : null, h('span', { class: 'sp' }),
       h('button', { class: 'btn sm', onclick: app.newGame }, 'New'), h('button', { class: 'btn sm', onclick: app.loadMenu }, 'Load'), h('button', { class: 'btn sm', disabled: G ? null : true, onclick: app.exportMd }, 'Export log'),
-      h('button', { class: 'btn sm', onclick: () => NM.tutorial() }, 'Tutorial'), h('button', { class: 'btn sm', id: 'btn-settings', onclick: app.settings, 'aria-label': 'Settings' }, '⚙ Settings'));
+      h('button', { class: 'btn sm', onclick: () => NM.help() }, 'Help'), h('button', { class: 'btn sm', onclick: () => NM.words() }, 'Words'), h('button', { class: 'btn sm', id: 'btn-settings', onclick: app.settings, 'aria-label': 'Settings' }, '⚙ Settings'));
   }
 
   /* ---------- shell ---------- */
@@ -2345,12 +2361,201 @@ NM.books.O = {
     await U.loadSettings(); await NM.radio.load();
     IO = NM.makeIO(app);
     const rootEl = U.$('#root');
-    rootEl.append(h('div', { id: 'app' }, h('header', { id: 'top' }), h('main', { id: 'main' }, h('aside', { id: 'dock', 'aria-label': 'Your Nomad' }), h('section', { id: 'stage', 'aria-label': 'The hunt' }), h('section', { id: 'bounty', 'aria-label': 'Current bounty' }), h('aside', { id: 'side', 'aria-label': 'Dossier, journal and codex' })),
+    rootEl.append(h('div', { id: 'app' }, h('header', { id: 'top' }), h('div', { id: 'now', role: 'status', 'aria-live': 'polite' }), h('main', { id: 'main' }, h('aside', { id: 'dock', 'aria-label': 'Your Nomad' }), h('section', { id: 'stage', 'aria-label': 'The hunt' }), h('section', { id: 'bounty', 'aria-label': 'Current bounty' }), h('aside', { id: 'side', 'aria-label': 'Dossier, journal and codex' })),
       h('footer', { id: 'logwrap' }, h('div', { id: 'loghandle', role: 'separator', 'aria-orientation': 'horizontal', 'aria-label': 'Resize log (drag, or use up and down arrows)', tabindex: 0 }), h('div', { id: 'logbar' }, h('b', null, 'Logbook'), h('span', { id: 'logcount', class: 'mut' }), h('span', { class: 'grow' }), h('span', { class: 'hint' }, 'Hover a line to see the dice behind it')), h('div', { id: 'log', role: 'log', 'aria-live': 'off' }))));
     logResize(); app.render();
-    if (!U.settings.tutorialDone && !root.__nmNoTutorial) setTimeout(() => NM.tutorial(), 400);
   };
   document.addEventListener('DOMContentLoaded', () => app.init());
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Beginner support: What do I do now, glossary, help, and a guided first hunt. */
+(function (root) {
+  'use strict';
+  const NM = root.NM, U = NM.ui, h = U.h, app = NM.app, F = NM.flow;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  /* ---------- glossary ---------- */
+  const GL = {
+    nomad: ['Nomad', 'A professional bounty hunter. You play one. Nomads belong to the Nomad\'s Guild and have to follow its code while they hunt.'],
+    guild: ['The Guild Code', 'The Guild\'s five rules: finish the job, only kill when necessary, Nomads do not fight Nomads, your employer\'s business is their own, and do not get attached. Bending them can cost you Favour. The Codex tab lists them in full.'],
+    contract: ['Contract', 'Your job. It names a planet, the client who hired you, and the Target you must find.'],
+    target: ['Target', 'The person with a bounty on their head. You hunt them down on the planet.'],
+    client: ['Client', 'The faction that hired you and wants the Target found.'],
+    faction: ['Faction', 'One of six competing powers in the galaxy at war. One of them is your client.'],
+    favour: ['Favour', 'Your standing with the Nomad\'s Guild. Follow the Guild Code to keep it high. Speak and Recruit add half of it, rounded up, to your roll. It also counts toward your final score.'],
+    notoriety: ['Notoriety', 'Your reputation on the planet. Threaten adds half of it, rounded up, to your roll. A high Notoriety draws Leads to you.'],
+    motivation: ['Motivation', 'Your will to succeed. After a roll you can spend 1 Motivation to reroll one die, but you must keep the new result. Each point left at the end is worth 2 points of score.'],
+    score: ['Score', 'Worked out at the Epilogue: Motivation x 2, plus Favour.'],
+    reaction: ['Reactions', 'The four things you can do when you meet someone: Speak, Attack, Threaten and Recruit. Which ones you can use depends on who you have met.'],
+    nomaddie: ['Nomad die', 'The die you roll for yourself. Bonuses shown as badges are added to it.'],
+    challenge: ['Challenge die', 'The die rolled for your opponent. If your Nomad die total beats the Challenge die total, you succeed. Otherwise you fail.'],
+    modifier: ['Modifier badges', 'Small badges beside a die showing bonuses or penalties added to it, and where they came from.'],
+    reroll: ['Reroll', 'After rolling, you can spend 1 Motivation to roll one of the two dice again. You must keep the new number, even if it is worse.'],
+    stars: ['STARS', 'Weapon strength. More STARS gives your Attack rolls a bigger bonus.'],
+    hearts: ['HEARTS', 'Your Defence. When you lose an Attack, each HEART blocks one hit before you are hurt.'],
+    local: ['Locals', 'Neutral people living on the planet. Many are caught up in the war between the factions.'],
+    asset: ['Assets', 'Locals who can help you. You can Recruit them, and each gives a bonus you can use once.'],
+    hostile: ['Hostiles', 'Soldiers, spies, thugs and other people who stand in your way on every planet.'],
+    lead: ['Leads', 'People you track down who know something about your Target. You need to find them to reach the Target.'],
+    destination: ['Destination', 'A place on the planet that you travel to while searching for Leads.'],
+    planetfall: ['Planetfall', 'Your arrival on the planet. It is the first pop-up of a hunt.'],
+    epilogue: ['Epilogue', 'The last step of a hunt, after the Target is dealt with. You learn how it ended and your score is worked out.'],
+    story: ['Story mode', 'Pop-ups ask short questions and your answers are saved in your Journal. A good choice if you like writing.'],
+    arcade: ['Arcade mode', 'No writing needed. The game just runs the rules and logs what happens.'],
+    dossier: ['Dossier', 'Your Nomad\'s sheet. It is in the right-hand panel and shows your weapons, outfit and injuries.'],
+    journal: ['Journal', 'The right-hand panel where your written answers are saved. You can add your own notes and export it.'],
+    codex: ['Codex', 'A panel of reference text from the rulebook, such as the Guild Code and the key terms.'],
+    manual: ['Manual dice', 'A setting that lets you roll real dice and type the result in. The game reminds you of the modifiers.']
+  };
+  function gt(s) { return esc(s).replace(/\[\[(\w+)\|([^\]]+)\]\]/g, (m, k, t) => GL[k] ? '<button type="button" class="gl" data-gl="' + k + '">' + t + '</button>' : t); }
+  NM.glossaryOne = function (k) { const g = GL[k]; if (!g) return; const m = U.modal({ dismissable: true, cls: 'gl-m', content: [h('div', { class: 'mh' }, h('h2', null, g[0])), h('div', { class: 'mb' }, h('p', null, g[1])), h('div', { class: 'mf' }, h('button', { class: 'btn', onclick: () => { m.close(); setTimeout(NM.words, 0); } }, 'All words'), h('button', { class: 'btn pri', onclick: () => m.close() }, 'Close'))] }); };
+  NM.words = function () {
+    const keys = Object.keys(GL).sort((a, b) => GL[a][0].localeCompare(GL[b][0]));
+    const m = U.modal({ dismissable: true, cls: 'wide', content: [h('div', { class: 'mh' }, h('h2', null, 'Words used in this game')), h('div', { class: 'mb' }, h('dl', { class: 'gllist' }, keys.map(k => [h('dt', null, GL[k][0]), h('dd', null, GL[k][1])]))), h('div', { class: 'mf' }, h('button', { class: 'btn pri', onclick: () => m.close() }, 'Close'))] });
+  };
+  document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-gl]'); if (b) NM.glossaryOne(b.dataset.gl); });
+
+  /* ---------- what do I do now ---------- */
+  function topInfo() {
+    const st = U.stack, top = st[st.length - 1]; if (!top) return null;
+    const q = s => top.el.querySelector(s);
+    return { top, peeking: top.peeking, kick: (q('.mh .kick') || {}).textContent || '', title: (q('.mh h2') || {}).textContent || '', hasTA: !!q('textarea'), rolled: !!((q('.result') || {}).textContent), nBtn: top.el.querySelectorAll('.mf .btn').length, opt: !!q('.opt.on'), q };
+  }
+  function nowText(t) {
+    const G = app.G;
+    if (t) {
+      if (t.peeking) return 'You are peeking at the rest of the app. Press Return to prompt when you are ready to carry on.';
+      const k = t.kick;
+      if (!k) return '';
+      if (k === 'New campaign') {
+        if (t.title === 'Campaign') return 'Choose which game to play. For a first game, pick Notorious. [[story|Story mode]] asks for short written answers. [[arcade|Arcade mode]] needs no writing. Then press Choose a Nomad. Quick start picks everything for you at random.';
+        if (t.title === 'Nomad') return t.opt ? 'Happy with this [[nomad|Nomad]]? Read their weapons and ability below, then press Background. Tap a different one to change your mind.' : 'Tap the [[nomad|Nomad]] you want to play. Each one has different weapons and a special ability. They show below when you tap.';
+        if (t.title === 'Background') return 'These details say who your Nomad is. They are already rolled for you. Change any with the menus, or press Roll to roll again. Give your Nomad a name, then press Your first contract.';
+        if (t.title === 'Contract') return 'A [[contract|contract]] is your job: a planet, a [[client|client]] who hired you and a [[target|Target]] to catch. It is already rolled for you. Change anything you like, then press Start the hunt.';
+      }
+      if (k === 'Table roll') return U.settings.manual ? 'The book needs a die roll. Roll a real die, then tap the number you rolled.' : 'The book needs a die roll. Press the roll button. The number picks a result from a table in the book.';
+      if (k === 'Reaction' || k === 'Roll' || k === 'Attack') {
+        if (!t.rolled) return (k === 'Attack' ? 'You roll every attack yourself. Nothing happens until you press the roll button. ' : 'Press the roll button. ') + 'Your [[nomaddie|Nomad die]] is on the left. The [[challenge|Challenge die]] is on the right. The [[modifier|badges]] are bonuses added to each die. If your total is higher, you succeed.';
+        return 'You can spend 1 [[motivation|Motivation]] to [[reroll|reroll]] one die, but you must keep the new result. When you are happy, press Accept result.';
+      }
+      if (k === 'Before the fight') return 'A fight is about to start. Check the options. Nothing happens until you roll each attack yourself. Press Begin the fight when you are ready.';
+      if (t.hasTA) return 'Read the card. If it asks a question, write a short answer in the box, or leave it empty. Then press the highlighted button to carry on.';
+      if (t.nBtn > 1) return 'Read the card, then choose one of the buttons. Each one says what will happen.';
+      return 'Read the card, then press the button to carry on.';
+    }
+    if (!G) return 'Press Guided first hunt for a walkthrough, or New campaign to start straight away.';
+    if (G.over) return 'This game is finished. Press Export log to save your story, or New to start another game.';
+    const c = F.cur(G), pl = F.planet(G, c);
+    if (app.busy) return 'Finish the open pop-up to carry on.';
+    if (!c.started) return 'Press Land on ' + pl.name + ' to begin the hunt.';
+    if (c.done) return 'Your hunt is complete. Press the big button to close the chapter.';
+    return ({
+      explore: 'Press Explore the planet. You will roll dice and meet people and enemies. Fights only start when you click Attack.',
+      dest: 'Press Travel to a Destination to search for [[lead|Leads]] that point toward your [[target|Target]].',
+      target: 'Your Leads have led you here. Press Hunt the Target to face them.',
+      epilogue: 'The Target is dealt with. Press Face the Epilogue to learn how the hunt ended.'
+    })[c.phase] || 'Press the big button to run the next step of the hunt.';
+  }
+  function decorate() {
+    const t = topInfo();
+    U.stack.forEach(m => {
+      const kick = (m.el.querySelector('.mh .kick') || {}).textContent || '';
+      let el = m.el.querySelector(':scope > .coach');
+      if (!kick) { if (el) el.remove(); return; }
+      const txt = m === U.stack[U.stack.length - 1] ? nowText(t) : '';
+      if (!txt) { if (el) el.remove(); return; }
+      const html = '<b class="lab">What do I do now?</b>' + gt(txt);
+      if (!el) { el = document.createElement('div'); el.className = 'coach'; m.el.insertBefore(el, m.el.firstChild); }
+      if (el.dataset.h !== html) { el.dataset.h = html; el.innerHTML = html; }
+    });
+    const n = document.getElementById('now');
+    if (n) { const html = U.stack.length ? '' : '<b class="lab">What do I do now?</b>' + gt(nowText(null)); if (n.dataset.h !== html) { n.dataset.h = html; n.innerHTML = html; n.style.display = html ? '' : 'none'; } }
+    return t;
+  }
+
+  /* ---------- guided first hunt ---------- */
+  let guide = null;
+  const inWiz = e => e.newG || ['Nomad', 'Background', 'Contract'].includes(e.wizStep);
+  const GS = [
+    { t: 'Welcome, Nomad', x: 'You are a bounty hunter in a galaxy at war. A client has hired you to find one person, the [[target|Target]]. This guide sets up your Nomad and plays your first steps with you. The app rolls the tables and shows you the rulebook text. You make the choices. Fights never start by themselves, every attack is your own click.', info: true, hl: '#btn-new', nextLabel: 'Start a new campaign', next: () => app.newGame(), done: e => !!e.wizStep || e.newG },
+    { t: 'Step 1: Choose the game', x: 'The first set-up page. Notorious is the base game, so keep that. [[story|Story mode]] asks you for short written answers. [[arcade|Arcade mode]] needs no writing. When you are ready, press Choose a Nomad.', hl: '.modal .mf .pri', done: e => inWiz(e) },
+    { t: 'Step 2: Choose your Nomad', x: 'Tap the Nomad you like the look of. Each is a different kind of hunter with their own weapons, outfit and special ability. Read the details that appear, then press Background.', hl: '.modal .opts', done: e => ['Background', 'Contract'].includes(e.wizStep) || e.newG },
+    { t: 'Step 3: Shape your Nomad', x: 'Here you decide who your Nomad is: species, name, personality, Origin, Scar and Trigger. They are already rolled for you. Change any with the menus, or press Roll to roll again. These details are story prompts for you to use. Press Your first contract when you are done.', hl: '.modal .mb', done: e => e.wizStep === 'Contract' || e.newG },
+    { t: 'Step 4: Your first contract', x: 'A [[contract|contract]] is your job. It has a planet, a [[client|client]] who hired you, a reason, and a Target to find. All of it is rolled for you. Change anything you like, then press Start the hunt.', hl: '.modal .mb', done: e => e.newG },
+    { t: 'Your Nomad', x: 'The panel on the left is your Nomad: weapons, outfit, assets and injuries. Hover over any badge to see where it came from.', info: true, hl: '#dock' },
+    { t: 'Your contract', x: 'The middle shows your hunt: the planet, who hired you and why, and your Target. The row of ticks shows how far you have got: two Leads, then the Target, then the Epilogue.', info: true, hl: '#stage' },
+    { t: 'Three numbers to watch', x: '[[favour|Favour]] is your standing with the Guild. [[notoriety|Notoriety]] is your reputation on the planet. [[motivation|Motivation]] is your will to keep going, and you spend it to reroll dice. The + and - buttons let you fix them by hand if you ever need to.', info: true, hl: '.stats' },
+    { t: 'Land on the planet', x: 'Press the big button to land. Every time you press it, the game works out what happens next and shows you pop-ups.', hl: '#btn-next', done: e => e.busy || (e.c && e.c.started) },
+    { t: 'Read the card', x: 'This pop-up is a card from the book. Read it. If there is a question box, write a short answer or leave it empty. Your answers are kept in your Journal. Press the button at the bottom to carry on. The banner at the top of each pop-up tells you what to do.', done: e => !e.busy && e.c && e.c.started },
+    { t: 'The logbook', x: 'What just happened is now written in the Logbook at the bottom. Hover a line to see the dice behind it. Drag the bar above it to make it bigger or smaller. You can export it any time.', info: true, hl: '#logwrap' },
+    { t: 'Explore the planet', x: 'Now press the big button again. It will say Explore the planet. You will roll dice, meet people and may find trouble.', hl: '#btn-next', done: e => e.busy },
+    { t: 'Dice and pop-ups', x: 'When a roll appears, press the roll button. You roll your own die (left) against the Challenge die (right). Higher total wins. After a roll you can spend 1 Motivation to reroll one die. In Settings you can switch to manual dice and roll real ones. Keep going until the pop-ups stop.', done: e => !e.busy },
+    { t: 'You are on your way', x: 'That is how every step works. Keep pressing the big button: Explore, then Travel to a Destination, find two Leads, hunt the Target, then the Epilogue. The banner always says what to do next. Help and Words are at the top if you get stuck.', info: true, nextLabel: 'Finish guide' }
+  ];
+  function genv() {
+    const st = U.stack, top = st[st.length - 1];
+    const wiz = st.find(m => ((m.el.querySelector('.mh .kick') || {}).textContent) === 'New campaign');
+    const G = app.G, newG = !!(G && G.id !== guide.baseId);
+    return { top, wizStep: wiz ? ((wiz.el.querySelector('.mh h2') || {}).textContent || null) : null, G, newG, c: newG ? F.cur(G) : null, busy: !!app.busy };
+  }
+  NM.startGuide = function () {
+    if (app.busy) { U.toast('Answer the open pop-up first.'); return; }
+    U.stack.slice().forEach(m => m.close());
+    guide = { i: 0, baseId: app.G ? app.G.id : null, min: false, key: '', entered: -1 };
+    tick();
+  };
+  function guideEnd(done) {
+    guide = null; document.body.classList.remove('guiding'); document.documentElement.style.removeProperty('--gh'); const el = document.getElementById('guide'); if (el) el.remove();
+    document.querySelectorAll('.ghl2').forEach(e => e.classList.remove('ghl2'));
+    if (done) { U.settings.tutorialDone = true; U.saveSettings(); U.toast('Guide finished. You can replay it from Help.'); }
+  }
+  function guideTick() {
+    document.querySelectorAll('.ghl2').forEach(e => e.classList.remove('ghl2'));
+    let el = document.getElementById('guide');
+    if (!guide) { if (el) el.remove(); document.body.classList.remove('guiding'); return; }
+    let s = GS[guide.i], guard = 0;
+    while (s && guard++ < 30 && s.done && s.done(genv())) { guide.i++; s = GS[guide.i]; }
+    if (!s) { guideEnd(true); return; }
+    if (guide.entered !== guide.i) { guide.entered = guide.i; guide.scroll = true; guide.key = ''; }
+    const e = genv();
+    const ok = s.info ? true : !!(s.done && s.done(e));
+    const key = guide.i + '|' + guide.min;
+    if (!el) { el = document.createElement('div'); el.id = 'guide'; el.className = 'guide'; el.setAttribute('role', 'region'); el.setAttribute('aria-label', 'Guided first hunt'); document.body.appendChild(el); }
+    if (el.dataset.key !== key) {
+      el.dataset.key = key;
+      el.innerHTML = '<div class="gtop"><span class="gstep">Guided hunt: step ' + (guide.i + 1) + ' of ' + GS.length + '</span><span><button class="btn sm" data-g="min">' + (guide.min ? 'Show' : 'Hide') + '</button> <button class="btn sm" data-g="stop">Skip guide</button></span></div>' + (guide.min ? '' : '<h3>' + esc(s.t) + '</h3><p>' + gt(s.x) + '</p>' + (s.info ? '<div class="grow"><button class="btn pri" data-g="next">' + esc(s.nextLabel || 'Next') + '</button></div>' : '<p class="hint">Do this step to carry on.</p>'));
+      el.querySelectorAll('[data-g]').forEach(b => b.addEventListener('click', () => {
+        const a = b.dataset.g; if (!guide) return;
+        if (a === 'stop') guideEnd(false);
+        else if (a === 'min') { guide.min = !guide.min; guideTick(); }
+        else if (a === 'next') { const st = GS[guide.i]; if (st.next) st.next(); guide.i++; if (guide.i >= GS.length) guideEnd(true); else guideTick(); }
+      }));
+    }
+    document.body.classList.add('guiding'); document.documentElement.style.setProperty('--gh', el.offsetHeight + 'px');
+    if (s.hl && !guide.min) { document.querySelectorAll(s.hl).forEach(n => { if (n.offsetParent !== null || getComputedStyle(n).position === 'fixed') n.classList.add('ghl2'); }); }
+    if (guide.scroll && s.hl) { guide.scroll = false; const t = document.querySelector(s.hl); if (t && !t.closest('.modal')) try { t.scrollIntoView({ block: 'nearest', behavior: U.settings.reduce ? 'auto' : 'smooth' }); } catch (x) {} }
+  }
+
+  /* ---------- help ---------- */
+  NM.help = function () {
+    const m = U.modal({ dismissable: true, content: [h('div', { class: 'mh' }, h('h2', null, 'Help')), h('div', { class: 'mb helplist' },
+      h('button', { class: 'btn pri', onclick: () => { m.close(); setTimeout(NM.startGuide, 30); } }, 'Replay the guided first hunt'), h('p', { class: 'hint' }, 'Walks you through making a Nomad and playing your first steps.'),
+      h('button', { class: 'btn', onclick: () => { m.close(); setTimeout(() => NM.tutorial(), 30); } }, 'Tour of the screen'), h('p', { class: 'hint' }, 'A short tour of what each panel is for.'),
+      h('button', { class: 'btn', onclick: () => { m.close(); setTimeout(NM.words, 30); } }, 'Words'), h('p', { class: 'hint' }, 'Plain-English meaning of every game term.'),
+      h('button', { class: 'btn', onclick: () => { m.close(); app.tab = 'codex'; app.renderSide(); } }, 'Open the Codex'), h('p', { class: 'hint' }, 'The Guild Code and key rules from the book.')), h('div', { class: 'mf' }, h('button', { class: 'btn pri', onclick: () => m.close() }, 'Close'))] });
+  };
+
+  /* ---------- wiring ---------- */
+  let queued = false;
+  function tick() { queued = false; try { decorate(); guideTick(); } catch (e) { console.error(e); } }
+  function queue() { if (!queued) { queued = true; requestAnimationFrame(tick); } }
+  function start() {
+    new MutationObserver(muts => { if (muts.some(m => { const t = m.target.nodeType === 1 ? m.target : m.target.parentElement; return !(t && t.closest && t.closest('.coach,#guide,#now')); })) queue(); }).observe(document.body, { childList: true, subtree: true });
+    setInterval(queue, 600); queue();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(start, 0)); else setTimeout(start, 0);
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>

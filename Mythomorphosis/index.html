@@ -127,7 +127,22 @@ ul.clean{list-style:none;padding:0;margin:0}ul.clean li{display:flex;gap:.4rem;a
  .actions{grid-template-columns:1fr}
  .top h1{font-size:1.05em}
 }
-@media print{.top,.tabs,.btn{display:none}}
+
+.now{background:var(--bg2);border:2px solid var(--line);border-left:7px solid var(--accent);border-radius:10px;padding:.55rem .9rem;font-size:1.02em}
+.now .lab{display:block;font-size:.72em;letter-spacing:.09em;text-transform:uppercase;color:var(--mute);margin-bottom:.1em}
+button.gl{background:none;border:0;border-bottom:2px dotted var(--accent);color:inherit;font:inherit;font-weight:700;padding:0;cursor:pointer}
+.gllist dt{font-weight:700;color:var(--accent);margin-top:.7em}.gllist dd{margin:.1em 0 0}
+.helplist .btn{display:block;width:100%;text-align:left}.helplist .hint{margin:.15em 0 .8em}
+.guide{position:fixed;left:50%;transform:translateX(-50%);bottom:.8rem;width:min(46rem,calc(100vw - 1.2rem));background:var(--card);color:var(--ink);border:3px solid var(--accent);border-radius:14px;padding:.6rem .9rem .7rem;z-index:40;box-shadow:0 8px 30px rgba(0,0,0,.5);max-height:48vh;overflow:auto}
+.guide h3{margin:.15em 0;color:var(--accent);font-size:1.15em}.guide p{margin:.3em 0}
+.gtop{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.gstep{font-size:.74em;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mute)}
+.grow{display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap;margin-top:.5rem}
+body.guiding{padding-bottom:17rem}
+.ghl{outline:4px solid var(--gold)!important;outline-offset:3px;box-shadow:0 0 0 9px rgba(217,169,58,.38)!important;animation:ghl 1.4s ease-in-out infinite}
+@keyframes ghl{50%{box-shadow:0 0 0 14px rgba(217,169,58,.15)}}
+@media(max-width:900px){.top h1{flex:1 1 100%}.guide{bottom:3.9rem;max-height:42vh}body.guiding.hasTabs{padding-bottom:21rem}}
+@media print{.top,.tabs,.btn,.guide,.now{display:none}}
 body.hc .btn.ghost,body.hc .btn.sm.ghost{color:#fff;border-color:#fff}
 body.hc .btn.alt{color:#ffe97a;border-color:#ffe97a}
 body.hc .top .btn{color:#fff}
@@ -667,14 +682,14 @@ function aestheticRoll(i, v){ // v: 1..10 provided or random
 function render(){
  const app=$('#app'); applyTheme();
  document.body.classList.toggle('hasTabs', UI.screen==='play');
- let h = renderTop();
+ let h = renderTop() + '<div class="wrap" style="padding-bottom:0"><div id="now" class="now" role="status" aria-live="polite"></div></div>';
  if(UI.screen==='home') h += renderHome();
  else if(UI.screen==='setup') h += renderSetup();
  else if(UI.screen==='play') h += renderPlay();
  h += `<div class="footer">This work is based on Mythomorphosis by Gordie Murphy licensed for our use under the Creative Commons Attribution 4.0 (CC-BY) License (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">https://creativecommons.org/licenses/by/4.0/</a>). Unofficial companion app. Rules text, pre-made societies and art are reproduced from the book. Lead art: Juho Choi. Layout: Julie-Anne “Jam” Muñoz. Other illustrations are public-domain works credited in the book (see Rules, About).</div>`;
  if(UI.screen==='play') h += renderTabs();
  app.innerHTML = h;
- wire();
+ wire(); nowUpdate(); guideRefresh();
  const lg=$('#log'); if(lg) lg.scrollTop=lg.scrollHeight;
 }
 function renderTop(){
@@ -684,7 +699,7 @@ function renderTop(){
   if(G.phase==='play') chips += `<span class="chip">Turn ${G.turnInGen+1} of ${E.currentTurnsInGen(G)}</span><span class="chip">${esc(G.meta.playerNames[E.activePlayerIndex(G)])}</span>`;
   else chips += `<span class="chip">${G.phase==='between'?'Generation over':G.phase==='ending'?'Final reflection':'Complete'}</span>`;
  }
- return `<header class="top"><h1>${ART.wordmark?img('wordmark','wm','Mythomorphosis'):'Mythomorphosis'}</h1>${chips}<button class="btn sm" data-act="home">Home</button><button class="btn sm" data-act="rules">Rules</button><button class="btn sm" data-act="settings">Settings</button></header>`;
+ return `<header class="top"><h1>${ART.wordmark?img('wordmark','wm','Mythomorphosis'):'Mythomorphosis'}</h1>${chips}<button class="btn sm" data-act="home">Home</button><button class="btn sm" data-act="words">Words</button><button class="btn sm" data-act="help">Help</button><button class="btn sm" data-act="rules">Rules</button><button class="btn sm" data-act="settings">Settings</button></header>`;
 }
 function renderTabs(){
  const t=[['board','Board'],['turn','Turn'],['log','Log'],['society','Society'],['more','More']];
@@ -695,8 +710,9 @@ function renderHome(){
  return `<div class="wrap"><div class="panel hero herogrid">${img('cover','cover','Cover art of Mythomorphosis')}<div><h1>${img('wordmark','wmdark','Mythomorphosis')}</h1><p>A game about how mythology changes over generations, by Gordie Murphy. Create a society and its dominant myth, then watch both change across five generations. Play solo or with up to four people. There is no Game Master.</p>
  <div class="row" style="justify-content:center">
  ${sv&&sv.phase?`<button class="btn" data-act="resume">Continue: ${esc(sv.meta.society)} (Gen ${sv.gen||'setup'}${sv.ended?', finished':''})</button>`:''}
- <button class="btn ${sv?'alt':''}" data-act="new">New game</button>
- <button class="btn ghost" data-act="tutorial">How to play</button>
+ <button class="btn ${sv?'ghost':''}" data-act="guide">Guided first game</button>
+ <button class="btn ${sv?'alt':'ghost'}" data-act="new">New game</button>
+ <button class="btn ghost" data-act="help">Help</button>
  <button class="btn ghost" data-act="import">Load a saved game file</button></div></div></div>
  <div class="panel"><h2>Safety first</h2><p>Before starting, go over <b>CATS</b> (Concept, Aim, Tone, Subject Matter) with your fellow players, and consider RPG safety tools like the X-Card, Script Change, Lines and Veils. <button class="btn sm ghost" data-act="safety">Read the safety notes</button></p></div></div>`;
 }
@@ -706,7 +722,7 @@ function renderSetup(){
  const s=UI.setup; const q=s.quickstart;
  const inp=(path,val,ph)=>`<input type="text" data-bind="${path}" value="${esc(val)}" placeholder="${esc(ph||'')}">`;
  const tx=(path,val,ph,rows)=>`<textarea data-bind="${path}" rows="${rows||2}" placeholder="${esc(ph||'')}">${esc(val)}</textarea>`;
- let h=`<div class="wrap"><div class="panel"><h2>1. Choose how to begin</h2>
+ let h=`<div class="wrap"><div class="panel" id="sp1"><h2>1. Choose how to begin</h2>
  <div class="row"><label style="margin:0">Players</label>${[1,2,3,4].map(n=>`<button class="btn sm ${s.players===n?'':'ghost'}" data-players="${n}" aria-pressed="${s.players===n}">${n}</button>`).join('')}
  <span class="hint" style="margin:0">${s.players===1?'Solo: 3 turns per generation (15 turns).':s.players===3?'3 players: an extra 21st turn in the last generation.':'4 turns per generation (20 turns).'}</span></div>
  <div class="grid2">${Array.from({length:s.players},(_,i)=>`<div><label>Player ${i+1} name</label>${inp('playerNames.'+i,s.playerNames[i])}</div>`).join('')}</div>
@@ -715,7 +731,7 @@ function renderSetup(){
  <div class="socgrid">${SOCS.map(c=>`<button class="soc" data-soc="${c.id}" aria-pressed="${s.sourceId===c.id}" style="background-image:linear-gradient(rgba(0,0,0,.5),rgba(0,0,0,.5)),url(${ART['bg_'+c.id]||''})">${img('logo_'+c.id,'slogo','')}<b>${esc(c.name)}</b><small>${esc(c.title)}<br>by ${esc(c.author)}</small></button>`).join('')}</div>
  ${s.sourceId?`<p><button class="btn sm ghost" data-act="readsoc" data-id="${s.sourceId}">Read the full starting myth</button> <button class="btn sm ghost" data-act="clearsoc">Start from scratch instead</button></p>`:''}
  </div>
- <div class="panel"><h2>2. Your society</h2>
+ <div class="panel" id="sp2"><h2>2. Your society</h2>
  <label>Society name</label>${inp('society',s.society,'Name it, then write it on your Society Card')}
  <label>Concept (a single-sentence pitch)</label>${tx('concept',s.concept,'e.g. a fleet of starships searching for a new home')}
  <label>Aesthetic</label>${tx('aesthetic',s.aesthetic,'Time period, location and aesthetic. Roll below for flavor words.',2)}
@@ -726,17 +742,17 @@ function renderSetup(){
  <div><label>When the myth's events occurred</label>${inp('when',s.when,'e.g. several centuries ago')}</div></div>
  <div class="grid2"><div><label>Generation length</label>${inp('genLength',s.genLength,'e.g. 30 years, or a week for an urban myth')}</div>
  <div><label>Content: what you do and don't want (CATS notes)</label>${inp('cats',s.cats,'e.g. no magic, aliens welcome')}</div></div></div>`;
- if(!q) h+=`<div class="panel"><h2>3. Optional: locations and characters</h2><p class="hint">About five locations, and about two characters for each player. A name and a short description is enough.</p>
+ if(!q) h+=`<div class="panel" id="sp3"><h2>3. Optional: locations and characters</h2><p class="hint">About five locations, and about two characters for each player. A name and a short description is enough.</p>
  <div class="grid2"><div><h3>Locations</h3>${listEditor('locations',s.locations,'The logging mill on the outskirts of town')}</div><div><h3>Characters</h3>${listEditor('characters',s.characters,'The high priestess of the temple')}</div></div></div>`;
- h+=`<div class="panel"><h2>${q?'3':'4'}. The myth</h2>
+ h+=`<div class="panel" id="sp4"><h2>${q?'3':'4'}. The myth</h2>
  <p class="hint">${q?'Choose a real-world myth, a legend, or a fairy tale and plot it out in five story beats. Use its real-world setting as your society.':'Choose a major event that fits your society’s aesthetic and tone. Summarize the story across about five index cards. Each card is one short sentence about a single action or event.'}</p>
  <label>Myth title (optional)</label>${inp('mythTitle',s.mythTitle,'')}
  ${s.beats.map((b,i)=>`<div class="row" style="align-items:flex-start;flex-wrap:nowrap"><span class="tag" style="margin-top:.7em">${i+1}</span><div style="flex:1">${tx('beats.'+i,b,'Story beat '+(i+1),1)}</div>${s.beats.length>3?`<button class="btn sm ghost" data-delbeat="${i}" aria-label="Remove beat ${i+1}">x</button>`:''}</div>`).join('')}
  <button class="btn sm ghost" data-act="addbeat">Add a beat</button>
  <details><summary>Structured method: five questions</summary><ol><li>Who or what does the myth focus around?</li><li>What is this entity doing?</li><li>How or why are they doing it?</li><li>What is the result or consequence?</li><li>Who, if anyone, pushes back?</li></ol></details></div>`;
- if(!q) h+=`<div class="panel"><h2>5. Initial Manifestations</h2><p class="hint">Describe how the myth manifests in the life of your society. Spend a few minutes on one answer for each.</p>
+ if(!q) h+=`<div class="panel" id="sp5"><h2>5. Initial Manifestations</h2><p class="hint">Describe how the myth manifests in the life of your society. Spend a few minutes on one answer for each.</p>
  ${['physical','social','emotional'].map(c=>`<label>The ${cap(c)}</label><div class="hint">${CATHELP[c]}</div>${tx('manifest.'+c,s.manifest[c],'',2)}`).join('')}</div>`;
- h+=`<div class="panel"><h2>${q?'4':'6'}. Generation 1</h2><p class="hint">Choose one major event that defines the time period. It should significantly affect your society directly and interest everyone at the table. Examples: Vikings invade England. The story hits cable news. The fleet finds a habitable world.</p>
+ h+=`<div class="panel" id="sp6"><h2>${q?'4':'6'}. Generation 1</h2><p class="hint">Choose one major event that defines the time period. It should significantly affect your society directly and interest everyone at the table. Examples: Vikings invade England. The story hits cable news. The fleet finds a habitable world.</p>
  ${tx('firstEvent',s.firstEvent,'Generation 1 event',2)}
  <div class="err" id="seterr" role="alert"></div>
  <div class="row"><button class="btn" data-act="begin">Begin the game</button><button class="btn ghost" data-act="home">Back</button></div></div></div>`;
@@ -898,6 +914,9 @@ function act(a,el){
   case 'nextgen': genDialog(); break;
   case 'ending': endingScreen(); break;
   case 'radio': radioDialog(); break;
+  case 'help': helpDialog(); break;
+  case 'words': glossaryAll(); break;
+  case 'guide': startGuide(); break;
   case 'export': download(slug()+'-log.md', markdown(),'text/markdown'); break;
   case 'savefile': download(slug()+'-save.json', JSON.stringify(G),'application/json'); break;
   case 'edge': edgeDialog(); break;
@@ -915,7 +934,7 @@ function begin(){
  if(!s.firstEvent.trim()){ err.textContent='Write the Generation 1 event.'; return; }
  G=E.newGame({players:s.players,playerNames:s.playerNames,society:s.society,concept:s.concept,aesthetic:s.aesthetic,boundBy:s.boundBy,when:s.when,genLength:s.genLength,cats:s.cats,mythTitle:s.mythTitle,sourceId:s.sourceId,quickstart:s.quickstart,beats,manifest:s.quickstart?null:s.manifest,characters:s.characters,locations:s.locations});
  E.startGame(G,s.firstEvent); UI.turn=freshTurn(); UI.screen='play'; UI.tab='turn'; save(); render(); window.scrollTo(0,0);
- if(!lsGet(FKEY)){ lsSet(FKEY,'1'); tutorial(); }
+ guideRefresh();
 }
 function resolve(){
  const T=UI.turn; const p={action:T.action,cardId:T.cardId,text:T.text,narration:T.narration,side:T.side,manifestCat:T.cat,manifestText:T.mtext,scene:T.scene};
@@ -1131,6 +1150,153 @@ function markdown(){
  o+=`---\nThis work is based on Mythomorphosis by Gordie Murphy licensed for our use under the Creative Commons Attribution 4.0 (CC-BY) License (https://creativecommons.org/licenses/by/4.0/).\n`;
  return o;
 }
+
+/* ---------- beginner support: glossary, "What do I do now?", guided first game, help ---------- */
+const GL = {
+ myth:['Myth','The old story your society tells about itself. In this game you write it as a few short story beats, then watch it change over time.'],
+ society:['Society','The group of people who share the myth. It could be a mining town, a fleet of starships or an online community.'],
+ beat:['Story beat','One short sentence of the myth, written on an index card. The myth is a row of about five of them.'],
+ generation:['Generation','A stretch of time in your society\'s history, for example 30 years. The game has five. Each one begins with one big event.'],
+ turn:['Turn','One player action. You change one thing in the myth, say why, and describe how the change shows up in everyday life.'],
+ erase:['Erase','A part of the myth is forgotten. You remove one card and say why people stopped telling that part.'],
+ metamorphize:['Metamorphize','A part of the myth changes. You rewrite one card and say why the story changed.'],
+ splinter:['Splinter','A smaller group starts telling a different version. You write a variant of one card and place it above or below the original.'],
+ propagate:['Propagate','New parts of the story appear. You write a brand new card and add it to the timeline where it makes sense.'],
+ manifestation:['Manifestation','A way the myth shows up in everyday life. There are three kinds: Physical (an object or place), Social (what people do together) and Emotional (how people feel). You cannot use the same kind two turns in a row.'],
+ variant:['Variant','A different version of a story beat, told by a smaller group. It sits in a row above or below the original story.'],
+ dominant:['Dominant version','The row with the most cards. It is the version most people believe. If a variant grows longer than the original, it takes over and becomes dominant.'],
+ quickstart:['Quickstart Mode','A shorter way to play. You pick a real-world myth or fairy tale and skip the Manifestations.'],
+ cats:['CATS','Concept, Aim, Tone and Subject Matter. A quick chat before you play about what everyone wants and does not want in the story, so everyone is comfortable.'],
+ xcard:['X-Card','A safety tool. Anyone can tap the X-Card to skip or change something that makes them uncomfortable. No reason needed.'],
+ lines:['Lines and Veils','A Line is something you never include in the story. A Veil is something that can happen, but only off screen.'],
+ scene:['Scene','An optional short roleplay that shows a change from the myth. You roll two dice to set its mood.'],
+ d6:['d6 and d10','A d6 is a normal six-sided die. A d10 has ten sides, and the 10 side can show as 0. You can roll your own dice and type the result in if you turn on manual dice in Settings.'],
+ stack:['Stacked card','A card with a thick, layered edge has been rewritten. Hover over it to see its earlier versions.'],
+ board:['Board','The timeline of cards, read left to right. Variants sit in rows above or below the original.']
+};
+function gt(s){ return esc(s).replace(/\[\[(\w+)\|([^\]]+)\]\]/g,(m,k,t)=>GL[k]?'<button type="button" class="gl" data-gl="'+k+'">'+t+'</button>':t); }
+function glossaryOne(k){ const g=GL[k]; if(!g) return; modal({title:g[0],body:'<p>'+esc(g[1])+'</p>',buttons:[{label:'All words',cls:'ghost',fn:()=>{ setTimeout(glossaryAll,0); }},{label:'Close',fn:()=>{}}]}); }
+function glossaryAll(){ const keys=Object.keys(GL).sort((a,b)=>GL[a][0].localeCompare(GL[b][0])); modal({title:'Words used in this game',wide:true,body:'<dl class="gllist">'+keys.map(k=>'<dt>'+esc(GL[k][0])+'</dt><dd>'+esc(GL[k][1])+'</dd>').join('')+'</dl>',buttons:[{label:'Close',fn:()=>{}}]}); }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-gl]'); if(b) glossaryOne(b.dataset.gl); });
+
+function nowText(){
+ if(UI.screen==='home'){
+  const sv=loadSaved();
+  if(sv&&sv.phase) return 'Press Continue to carry on with your saved game, or New game to start another.';
+  if(!lsGet(FKEY)) return 'New here? Press Guided first game. It walks you through setting up and taking your first turn, step by step.';
+  return 'Press New game to start, or Guided first game if you want the walkthrough again.';
+ }
+ if(UI.screen==='setup'){
+  const s=UI.setup; const beats=s.beats.filter(b=>b.trim()).length;
+  if(!s.society.trim()) return 'Pick a ready-made society below, or type a name for your own. A [[society|society]] is the group of people who share your [[myth|myth]].';
+  if(beats<3) return 'Write at least three [[beat|story beats]]. A story beat is one short sentence of the myth. About five works best.';
+  if(!s.firstEvent.trim()) return 'Scroll down and write the Generation 1 event: one big thing that happens in this time period.';
+  return 'Everything is filled in. Press Begin the game at the bottom of the page.';
+ }
+ if(UI.screen==='play'&&G){
+  if(G.phase==='between') return 'This [[generation|generation]] is over. Press Change generations and write the next big event.';
+  if(G.phase==='ending') return 'All five generations are finished. Press Final reflection to write how the myth ended up.';
+  if(G.phase!=='play') return 'The game is complete. Use More to export your story, or Home to start a new one.';
+  const T=UI.turn, name=G.meta.playerNames[E.activePlayerIndex(G)];
+  if(!T.action) return name+', it is your turn. On the Turn panel, choose one of four actions: [[erase|Erase]], [[metamorphize|Metamorphize]], [[splinter|Splinter]] or [[propagate|Propagate]].';
+  if(T.action==='propagate'){ if(!T.prop) return 'Press a + button between cards on the Board, or an empty slot, to choose where the new card goes.'; }
+  else {
+   const c=T.cardId?E.card(G,T.cardId):null;
+   if(!c) return 'Tap the [[beat|story beat]] card on the Board that you want to '+({erase:'forget',metamorphize:'rewrite',splinter:'split into a variant'})[T.action]+'.';
+   const ck=E.canTouch(G,c,T.action); if(!ck.ok) return 'That card cannot be used right now. '+ck.why+' Pick a different card.';
+  }
+  if(T.action!=='erase'&&!T.text.trim()) return 'Write the new story beat on the Turn panel. One short sentence is enough.';
+  if(!T.narration.trim()) return 'Say or write why this change happened. One or two sentences.';
+  if(!G.meta.quickstart){
+   if(!T.cat) return 'Choose a [[manifestation|Manifestation]]: Physical, Social or Emotional.';
+   if(!T.mtext.trim()) return 'Describe how this change shows up in everyday life for your society.';
+  }
+  return 'All set. Press Resolve turn to lock it in. You can roll for an optional [[scene|scene]] first.';
+ }
+ return '';
+}
+function nowUpdate(){ const n=document.getElementById('now'); if(n) n.innerHTML='<b class="lab">What do I do now?</b>'+gt(nowText()); }
+
+const EXAMPLES=['A harsh winter cuts the community off from the outside world for months.','A rival group arrives and claims the land for themselves.','A famous traveller visits and tells everyone what the old story really means.','A sudden disaster damages the place where the story is kept.','Years of peace make people curious about what lies beyond their borders.'];
+const GSTEPS=[
+ {screen:'home',title:'Welcome',text:'You are about to play Mythomorphosis. Your society shares one old story, called a [[myth|myth]]. Over five [[generation|generations]], parts of it are forgotten, changed and added to. Nobody wins or loses. The app handles the rules. You supply the story. This guide sets up a game with you and plays your first turn.',next:()=>{ UI.setup=freshSetup(); UI.screen='setup'; render(); },nextLabel:'Start setting up',hl:'[data-act="guide"]'},
+ {screen:'setup',title:'How many players?',text:'You can play alone or with up to four people sharing one screen. For your first game, leave it on 1. A solo game has 3 turns in each generation, 15 in total. You can see the choice in the first box.',hl:'#sp1',onEnter:()=>{ if(UI.setup.players!==1||UI.setup.quickstart){ UI.setup.players=1; UI.setup.quickstart=false; return true; } }},
+ {screen:'setup',title:'Pick a society',text:'A [[society|society]] is the group of people who share your myth. The pictures are ready-made societies from the book. Tap one to fill in the whole form, including its myth. Choose the one that sounds most interesting to you.',hl:'.socgrid',wait:()=>!!UI.setup.sourceId},
+ {screen:'setup',title:'About your society',text:'These boxes describe your society: its name, a one sentence idea, what binds people together, and how long one [[generation|generation]] lasts. They are already filled in for you. You can change anything you like. Read them, then press Next.',hl:'#sp2'},
+ {screen:'setup',title:'Places and people (optional)',text:'You can list places and characters from your story here. It is optional, so you can leave it empty and add some later during play.',hl:'#sp3'},
+ {screen:'setup',title:'The myth',text:'This is the old story your society tells, split into about five short [[beat|story beats]]. Each beat becomes one index card. These cards are what you will change during the game. Read through the beats so you know the story.',hl:'#sp4'},
+ {screen:'setup',title:'Manifestations',text:'A [[manifestation|Manifestation]] is a way the myth shows up in everyday life. There are three kinds: Physical (an object or place), Social (what people do together) and Emotional (how people feel). These start filled in. You will add a new one each turn.',hl:'#sp5'},
+ {screen:'setup',title:'Write the Generation 1 event',text:'Now write the big event that shapes the first [[generation|generation]]. It should shake up your society and give people something to react to. Write one sentence in the box, or press the button for an example.',hl:'#sp6 textarea',wait:()=>!!UI.setup.firstEvent.trim(),extra:{label:'Give me an example',fn:()=>{ UI.setup.firstEvent=EXAMPLES[Math.floor(Math.random()*EXAMPLES.length)]; render(); }}},
+ {screen:'setup',title:'Begin the game',text:'Everything is ready. Scroll to the bottom and press Begin the game.',hl:'[data-act="begin"]',auto:true,wait:()=>UI.screen==='play'},
+ {screen:'play',title:'The board',tab:'board',text:'This is your myth as a row of cards, read left to right like a timeline. A card with a thick stacked edge has been rewritten. A gap means something was forgotten. Cards above or below are variants, told by smaller groups. Press Next to take your first turn.',hl:'.board'},
+ {screen:'play',title:'Choose an action',tab:'turn',text:'Each turn you do one of four things to the myth. [[erase|Erase]] forgets a card. [[metamorphize|Metamorphize]] rewrites a card. [[splinter|Splinter]] adds a rival version above or below. [[propagate|Propagate]] adds a brand new card. For your first turn, try Metamorphize.',hl:'.actions',wait:()=>!!UI.turn.action},
+ {screen:'play',title:'Choose where',tab:'board',text:'Now pick the card. Tap the story beat on the board that you want to change. If you chose Propagate, press a + between cards instead.',hl:'.board',auto:true,wait:()=>UI.turn.action==='propagate'?!!UI.turn.prop:!!UI.turn.cardId},
+ {screen:'play',title:'Write the new beat',tab:'turn',text:'Write one short sentence for the new version of the story. Think about how a story drifts when people retell it: someone forgets a detail, adds something, or changes it to suit their own life.',hl:'[data-turn="text"]',wait:()=>!!UI.turn.text.trim(),skip:()=>UI.turn.action==='erase'},
+ {screen:'play',title:'Say why',tab:'turn',text:'Why did this change happen? Who changed the story, and why? One or two sentences is plenty. For example: a travelling storyteller forgot the ending, so he made up a new one.',hl:'[data-turn="narration"]',wait:()=>!!UI.turn.narration.trim()},
+ {screen:'play',title:'Add a Manifestation',tab:'turn',text:'Choose one kind of [[manifestation|Manifestation]], then describe how this change shows up in everyday life. For example, Physical could be a new carving, Social a new festival, Emotional a new fear. You cannot pick the same kind two turns in a row.',hl:'.cats',wait:()=>!!UI.turn.cat&&!!UI.turn.mtext.trim(),skip:()=>G&&G.meta.quickstart},
+ {screen:'play',title:'Optional scene',tab:'turn',text:'You can roll two dice to get a mood for a short roleplay scene about this change. It is optional and you can try it on later turns. Press Next to skip it for now.',hl:'[data-act="dice"]'},
+ {screen:'play',title:'Resolve the turn',tab:'turn',text:'Press Resolve turn to lock your change into the myth.',hl:'[data-act="resolve"]',auto:true,wait:()=>!!G&&G.turnNo>=1},
+ {screen:'play',title:'Well done',tab:'turn',text:'That is one turn. The Log records every turn, and the top bar shows which generation and turn you are on. A solo game has 3 turns per generation. After the last turn, press Change generations and write a new big event. After 5 generations the longest version of the myth is the one that lasts. You cannot use the same card twice in one generation. You are on your own now. Help and Words are always at the top if you get stuck.',nextLabel:'Finish guide'}
+];
+function startGuide(){ UI.guide={i:0,entered:-1,key:''}; UI.screen='home'; render(); window.scrollTo(0,0); }
+function guideEnd(done){ UI.guide=null; if(done) lsSet(FKEY,'1'); const el=document.getElementById('guide'); if(el) el.remove(); document.body.classList.remove('guiding'); document.querySelectorAll('.ghl').forEach(e=>e.classList.remove('ghl')); if(done) toast('Guide finished. You can replay it from Help.'); nowUpdate(); }
+function guideRefresh(){
+ let el=document.getElementById('guide');
+ document.querySelectorAll('.ghl').forEach(e=>e.classList.remove('ghl'));
+ if(!UI.guide){ if(el) el.remove(); document.body.classList.remove('guiding'); return; }
+ const g=UI.guide; let s=GSTEPS[g.i], guard=0;
+ while(s && guard++<30){
+  if(s.skip && s.skip()){ g.i++; s=GSTEPS[g.i]; continue; }
+  if(s.auto && s.wait && s.wait()){ g.i++; s=GSTEPS[g.i]; continue; }
+  break;
+ }
+ if(!s){ guideEnd(true); return; }
+ if(!el){ el=document.createElement('div'); el.id='guide'; el.className='guide'; el.setAttribute('role','region'); el.setAttribute('aria-label','Guided first game'); document.body.appendChild(el); }
+ document.body.classList.add('guiding');
+ const live=GSTEPS.filter(x=>!(x.skip&&x.skip())); const pos=live.indexOf(s)+1;
+ let key;
+ if(s.screen!==UI.screen){
+  key='p'+g.i+UI.screen;
+  if(el.dataset.key!==key){ el.dataset.key=key; el.innerHTML='<div class="gtop"><span class="gstep">Guide paused</span></div><p>The guide is waiting for you on the '+(s.screen==='play'?'game':s.screen)+' screen.</p><div class="grow"><button class="btn sm ghost" data-g="stop">Stop guide</button><button class="btn" data-g="resume">Go back to the guide</button></div>'; bindGuide(el,s); }
+  return;
+ }
+ if(g.entered!==g.i){
+  g.entered=g.i; g.scroll=true; let changed=false;
+  if(s.onEnter && s.onEnter()) changed=true;
+  if(s.tab && UI.screen==='play' && UI.tab!==s.tab){ UI.tab=s.tab; changed=true; }
+  if(changed){ el.dataset.key=''; render(); return; }
+ }
+ const ok=!s.wait||s.wait();
+ key='s'+g.i+(ok?'1':'0');
+ if(el.dataset.key!==key){
+  el.dataset.key=key;
+  const back=live.slice(0,pos-1).reverse().find(x=>x.screen===s.screen&&!x.auto);
+  el.innerHTML='<div class="gtop"><span class="gstep">Guided game: step '+pos+' of '+live.length+'</span><button class="btn sm ghost" data-g="stop">Skip guide</button></div><h3>'+esc(s.title)+'</h3><p>'+gt(s.text)+'</p>'+(s.extra?'<div class="grow" style="justify-content:flex-start"><button class="btn sm alt" data-g="extra">'+esc(s.extra.label)+'</button></div>':'')+'<div class="grow">'+(back?'<button class="btn ghost" data-g="back">Back</button>':'')+'<button class="btn" data-g="next" '+(ok?'':'disabled')+'>'+(ok?(s.nextLabel||'Next'):'Do this step first')+'</button></div>';
+  bindGuide(el,s);
+ }
+ if(s.hl) document.querySelectorAll(s.hl).forEach(e=>e.classList.add('ghl'));
+ if(g.scroll && s.hl){ g.scroll=false; const t=document.querySelector(s.hl); if(t) try{ t.scrollIntoView({block:'center',behavior:(S.rm?'auto':'smooth')}); }catch(e){} }
+}
+function bindGuide(el,s){
+ el.querySelectorAll('[data-g]').forEach(b=>b.addEventListener('click',()=>{
+  const a=b.dataset.g, g=UI.guide; if(!g) return;
+  if(a==='stop'){ guideEnd(false); }
+  else if(a==='resume'){ UI.screen=s.screen==='setup'?(UI.setup?'setup':'home'):s.screen==='play'?(G&&G.gen?'play':'home'):'home'; render(); }
+  else if(a==='extra'){ s.extra.fn(); }
+  else if(a==='back'){ for(let k=g.i-1;k>=0;k--){ const p=GSTEPS[k]; if(p.screen===s.screen&&!p.auto&&!(p.skip&&p.skip())){ g.i=k; break; } } g.entered=-1; el.dataset.key=''; guideRefresh(); }
+  else if(a==='next'){ if(s.wait&&!s.wait()) return; if(s.next) s.next(); g.i++; el.dataset.key=''; if(g.i>=GSTEPS.length){ guideEnd(true); } else guideRefresh(); }
+ }));
+}
+function helpDialog(){
+ modal({title:'Help',body:`<div class="helplist"><button class="btn" data-h="guide">Replay the guided first game</button><p class="hint">Walks you through setting up a game and taking your first turn.</p>
+ <button class="btn ghost" data-h="tour">How the screens work</button><p class="hint">A short tour of the board, turns, Manifestations and scenes.</p>
+ <button class="btn ghost" data-h="words">Words</button><p class="hint">Plain-English meaning of every game term.</p>
+ <button class="btn ghost" data-h="rules">Rules and safety notes</button><p class="hint">The rules in short, plus safety tools to use with other people.</p></div>`,buttons:[{label:'Close',fn:()=>{}}],init:(ov,close)=>{
+  ov.querySelectorAll('[data-h]').forEach(b=>b.addEventListener('click',()=>{ const k=b.dataset.h; close(); setTimeout(()=>{ if(k==='guide') startGuide(); else if(k==='tour') tutorial(); else if(k==='words') glossaryAll(); else rulesDialog(); },30); }));
+ }});
+}
+
+['input','click','change'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(()=>{ nowUpdate(); guideRefresh(); },0)));
 
 /* ---------- boot ---------- */
 applyS();
