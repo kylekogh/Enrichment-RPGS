@@ -146,6 +146,7 @@ body.paper .modal textarea,body.paper .modal input[type=text]{display:none}
 .pill.used{opacity:.6;text-decoration:line-through}
 .artimg.tile{display:block;max-width:230px;max-height:190px;object-fit:contain;background:#fff;border-radius:12px;padding:6px;margin:0 auto 12px}.artimg.tile.tall{max-height:300px;max-width:200px;padding:0;background:none}
 .grid.pk{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));max-height:42vh;overflow:auto}
+.turn{background:var(--soft);border:2px solid var(--accent);border-radius:12px;padding:8px 12px;margin:10px 0;font-weight:700}
 </style>
 </head>
 <body>
@@ -210,6 +211,7 @@ const EX={
  "spread.0.text":"Rio, a market seller who thinks he is the hero of a story about finding a great truth.",
  "spread.1.text":"His little sister, who is hiding a secret from the family.",
  "spread.2.text":"A popular local official who seems friendly but is leading Rio somewhere dark.",
+ "spread.0.d":"He hums when he is nervous.","spread.1.d":"She never finishes her sentences when she lies.","spread.2.d":"They always carry a lantern.",
  "note.q0":"A folded page left on my desk. It said 'Behave. I have big plans for you.' It felt like a warning wrapped in a smile.",
  "note.q1":"Proud and a bit controlling. They think this story belongs only to them.",
  "scene":"The river burst its banks overnight. Rio held his sister on the roof and shouted a curse, not at the goddess, but at the Author.",
@@ -232,11 +234,13 @@ let S=Object.assign({size:1,font:"verdana",theme:"ink"},ld(SKEY)||{});
 let G=null,TUT=false,SAVED_G=null,ASKCB=null,scrollFlag=false,PICK=null;
 const FONTS={verdana:"Verdana,Geneva,sans-serif",arial:"Arial,Helvetica,sans-serif",comic:"'Comic Sans MS','Comic Neue',cursive,sans-serif",serif:"Georgia,serif"};
 const PP=()=>!!(G&&G.paper);
+const nm=i=>(G.names&&G.names[i])||(i?"Author player":"Character player");
+const chip=i=>`<div class="turn">${i?"✒️":"🎭"} <b>${esc(nm(i))}</b> ${i?"(the Author)":"(the Character)"}</div>`;
 const pnote=t=>`<div class="pnote"><b>✏️ Write on paper:</b> ${T(t)}</div>`;
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
 
-function newGame(){return{paper:false,real:false,faceUp:false,stage:"safety",
- spread:[{c:null,text:""},{c:null,text:""},{c:null,text:""}],note:{c:null,q0:"",q1:""},maj:[],ch:0,C:null,log:[],
+function newGame(){return{duet:false,names:["",""],paper:false,real:false,faceUp:false,stage:"safety",
+ spread:[{c:null,text:"",d:""},{c:null,text:"",d:""},{c:null,text:"",d:""}],note:{c:null,q0:"",q1:""},maj:[],ch:0,C:null,log:[],
  end:{a0:"",a1:"",a2:"",defOn:false,def:"",used:false,final:""}}}
 function save(){if(TUT||!G)return;sv(KEY,G)}
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove("on"),1500)}
@@ -266,7 +270,7 @@ function minorDeck(){return shuffle(RANKS.map((_,i)=>({rank:i,rev:rnd(2)===1})))
 
 /* ---------- FIELDS ---------- */
 function field0(label,path,o={}){const v=get(path)||"";return `<label class="l" for="${o.id||path}">${T(label)}</label>${o.hint?`<div class="hint">${T(o.hint)}</div>`:""}<textarea id="${o.id||path}" data-b="${path}" ${o.tip?`data-tip="${o.tip}"`:""} placeholder="${esc(o.ph||"")}" rows="${o.rows||4}">${esc(v)}</textarea>`}
-function exFor(p){if(EX[p])return EX[p];if(/^C\.cards\.\d\.text$/.test(p))return EX.scene;if(p==="C.msg.text")return EX.msg;if(/^end\.a\d$/.test(p))return EX[p];return EX[p.replace(/^end\./,"end.")]}
+function exFor(p){if(EX[p])return EX[p];if(/^C\.cards\.\d\.react$/.test(p))return "I did not expect the flood to feel so personal. It was as if the Author was watching me cope.";if(p==="C.msg.reply")return "I read it twice, then I burned it. Let them write that.";if(/^C\.cards\.\d\.text$/.test(p))return EX.scene;if(p==="C.msg.text")return EX.msg;if(/^end\.a\d$/.test(p))return EX[p];return EX[p.replace(/^end\./,"end.")]}
 function paperField(l,p){const ex=exFor(p),long=ex&&ex.length>30;return pnote(l)+(ex?(long?`<details class="small"><summary>See an example</summary><p>e.g. ${esc(ex)}</p></details>`:`<div class="small" style="margin:-6px 0 10px 4px">e.g. ${esc(ex)}</div>`):"")}
 function field(l,p,o){return PP()?paperField(l,p):field0(l,p,o)}
 function stuck(){return `<details class="small"><summary>Stuck? Tap for help</summary><p>${esc(NUDGE)}</p></details>`}
@@ -274,11 +278,11 @@ function pickRow(back,next,label,dis,tip){return `<div class="row end">${back?`<
 
 /* ---------- STORY ---------- */
 function story(){const b=[];b.push(["h1","Death of the Author"]);
- b.push(["h2","Character Spread"]);G.spread.forEach((s,i)=>{b.push(["q",SPREAD_ROLE[i].n+(s.c?": "+mname(s.c):"")]);b.push(["p",s.text||"(not written)"])});
+ b.push(["h2","Character Spread"]);G.spread.forEach((s,i)=>{b.push(["q",SPREAD_ROLE[i].n+(s.c?": "+mname(s.c):"")]);b.push(["p",s.text||"(not written)"]);if(G.duet&&s.d){b.push(["q","Extra detail from the Character player"]);b.push(["p",s.d])}});
  if(G.note.c){b.push(["h2","The Author's note"]);b.push(["q","Card: "+mname(G.note.c)]);NOTEQ.forEach((q,i)=>{b.push(["q",q]);b.push(["p",G.note["q"+i]||"(not written)"])})}
- G.log.forEach(e=>{if(e.kind==="scene"){b.push(["h3",`Chapter ${e.ch+1}, scene ${e.n}`]);b.push(["q",e.prompt]);e.mods.forEach(m=>b.push(["p","("+m+")"]));e.auth.forEach(a=>b.push(["p","(Author's response card: "+a+")"]));b.push(["p",e.text||"(not written)"])}
+ G.log.forEach(e=>{if(e.kind==="scene"){b.push(["h3",`Chapter ${e.ch+1}, scene ${e.n}`]);b.push(["q",e.prompt]);e.mods.forEach(m=>b.push(["p","("+m+")"]));e.auth.forEach(a=>b.push(["p","(Author's response card: "+a+")"]));b.push(["p",e.text||"(not written)"]);if(e.react){b.push(["q","The Character's thoughts"]);b.push(["p",e.react])}}
   else if(e.kind==="chap"){b.push(["h2",`Chapter ${e.ch+1}: ${CHAP[e.ch].t}`])}
-  else if(e.kind==="msg"){b.push(["h3",`The Author's message after chapter ${e.ch+1}`]);b.push(["q","Card: "+e.card]);b.push(["p",e.text||"(not written)"])}});
+  else if(e.kind==="msg"){b.push(["h3",`The Author's message after chapter ${e.ch+1}`]);if(e.card)b.push(["q","Card: "+e.card]);b.push(["p",e.text||"(not written)"]);if(e.reply){b.push(["q","The Character replies"]);b.push(["p",e.reply])}}});
  if(G.stage==="checkin"||G.stage==="journal"){b.push(["h2","Chapter 5: The Resolution"]);C5.forEach((q,i)=>{b.push(["q",q]);b.push(["p",G.end["a"+i]||"(not written)"])});
   b.push(["q","The confrontation"+(G.end.used?" (Defiance used"+(G.end.def?": act "+G.end.def:"")+")":"")]);b.push(["p",G.end.final||"(not written)"])}
  return b}
@@ -289,8 +293,9 @@ function storyMD(){return story().map(([t,x])=>({h1:`# ${x}\n`,h2:`\n## ${x}\n`,
 function pos(){if(!G)return"title";if(G.stage!=="chap")return G.stage;const C=G.C;if(!C)return"chapintro";
  if(C.phase==="msg")return"chapmsg";if(C.cur>=0)return"scene"+C.cards[C.cur].phase;return C.cards.length?"chaplist":"chapintro"}
 const NOW={title:"Press Start new game, or try the guided tutorial first.",safety:"Read the note. You can skip any prompt you do not want. Press Next.",setup:"Choose which cards you are using, then press Next.",spread:"Draw three cards and write who you, your Friend and your Foe are.",note:"Draw one card. It is a message the Author left before your story began.",chapintro:"Draw three scene cards for this chapter and lay them face down.",chaplist:"Flip the next scene card to see your prompt.",sceneread:"Read the prompt. Decide whether to use your Reversal or Defiance, then press Write the scene.",scenewrite:"Write what happens in this scene, then press Finish this scene.",chapmsg:"Draw a card for the Author's message and write what it says.",c5:"Chapter 5. Answer the questions, then write your confrontation.",checkin:"Check in with yourself, then press Finish.",journal:"Your story is complete."};
+const NOWD={spread:"Author: draw the three cards and describe your Character, Friend and Foe. Character: add one detail to each.",note:"Author: draw one card and describe the message. Character: give your first impression of the Author.",sceneread:"Character: decide whether to use your Reversal or Defiance. Then press Write the scene.",scenewrite:"Author: describe the scene. Character: say what you think about it. Then press Finish this scene.",chapmsg:"Author: tell the Character the message. Character: reply if you like.",c5:"Author: answer the questions. Character: write your confrontation."};
 function header(){return `<header class="top"><span class="brand">Death of the Author</span>${G&&!TUT?`<button class="tb" data-a="home">Home</button>`:""}${G&&G.spread[0].c?`<button class="tb" data-a="sheet">My Spread</button>`:""}${G&&G.log.length&&!PP()?`<button class="tb" data-a="story">Story so far</button>`:""}<button class="tb" data-a="gloss">Words</button><button class="tb" data-a="help">Help</button><button class="tb" data-a="settings">Settings</button></header>`}
-function now(){return `<div class="now" role="status"><b>What do I do now?</b>${esc(NOW[pos()]||"")}</div>`}
+function now(){return `<div class="now" role="status"><b>What do I do now?</b>${esc((G&&G.duet&&NOWD[pos()])||NOW[pos()]||"")}</div>`}
 function prog(){if(!G||!["chap","c5","note"].includes(G.stage))return"";const done=G.C?G.C.cards.filter(c=>c.done).length:0;
  return `<div class="prog"><div class="pill">${G.stage==="c5"?"Chapter 5 of 5":G.stage==="note"?"Before chapter 1":"Chapter "+(G.ch+1)+" of 5"}</div>${G.stage==="chap"&&G.C&&G.C.cards.length?`<div class="pill">Scenes done: ${done} of 3</div><div class="pill ${G.C.usedRev?"used":""}">${T("[[reversal|Reversal]]")}: ${G.C.usedRev?"used":"ready"}</div><div class="pill ${G.C.usedDef?"used":""}">${T("[[defiance|Defiance]]")}: ${G.C.usedDef?"used":"ready"}</div>`:""}</div>`}
 
@@ -300,7 +305,7 @@ function sTitle(){const sv0=!TUT&&ld(KEY);
  <ul><li>You do not need to know tarot. Every card comes with simple ideas.</li><li>You write short answers. A sentence or two is enough.</li><li>The game tells you what to do next at every step.</li><li>It saves by itself. A game takes about 1 to 2 hours, and you can stop any time.</li></ul>
  <div class="row">${sv0&&sv0.stage&&sv0.spread&&sv0.spread[0].c?`<button class="btn" data-a="cont">Continue my story${sv0.spread[0].text?` (${esc(sv0.spread[0].text.split(/[,.]/)[0].slice(0,30))})`:""}</button>`:""}
  <button class="btn ${sv0&&sv0.spread&&sv0.spread[0].c?"sec":""}" data-a="start" data-tip="start">Start new game</button><button class="btn sec" data-a="tut">Guided tutorial (3 minutes)</button></div><div class="clear"></div>
- <details class="small"><summary>About this version</summary><p>Death of the Author was written by Samantha Leigh. Cover and interior art by Victor Winter. Layout and title lettering by James Hanna. Editing by Marx Shepherd. It is a hack of Anamnesis, and it is licensed under a Creative Commons Attribution 4.0 International License (CC BY 4.0, https://creativecommons.org/licenses/by/4.0). Other games by Samantha Leigh are at blinkingbirchgames.itch.io.</p><p>This is a fan-made companion app for classroom and personal use, made with the creators' permission. The idea words for the tarot cards, the example answers and the beginner help are added for this app and are not from the book. The Duet (two player) version is not included. Please support the original game and its creators.</p></details>`}
+ <details class="small"><summary>About this version</summary><p>Death of the Author was written by Samantha Leigh. Cover and interior art by Victor Winter. Layout and title lettering by James Hanna. Editing by Marx Shepherd. It is a hack of Anamnesis, and it is licensed under a Creative Commons Attribution 4.0 International License (CC BY 4.0, https://creativecommons.org/licenses/by/4.0). Other games by Samantha Leigh are at blinkingbirchgames.itch.io.</p><p>This is a fan-made companion app for classroom and personal use, made with the creators' permission. The idea words for the tarot cards, the example answers and the beginner help are added for this app and are not from the book. The two-player Duet mode follows the book's Duet rules. The pre-existing character options are not included. Please support the original game and its creators.</p></details>`}
 
 function sSafety(){return `<div class="step">Step 1 of 4: A note before you start</div><div class="bar"><i style="width:10%"></i></div>${im("quill.jpg","tile","A quill, an inkwell and a sheet of paper")}<h2>Look after yourself</h2>
  <p>This game has themes of:</p><ul>${THEMES.map(t=>`<li>${t}</li>`).join("")}</ul>
@@ -311,20 +316,21 @@ function sSafety(){return `<div class="step">Step 1 of 4: A note before you star
 function sSetup(){return `<div class="step">Step 2 of 4: Your cards</div><div class="bar"><i style="width:35%"></i></div><h2>How will you use the cards?</h2><p>${T("The game uses a [[tarot]] deck. You can use the app's built-in deck or your own physical deck. Both work the same way.")}</p>
  <div class="grid" data-tip="cards"><button class="opt ${!G.real?"sel":""}" data-a="realCards" data-v="0"><span class="t">Virtual deck</span><span class="s">The app shuffles and draws for you.</span></button><button class="opt ${G.real?"sel":""}" data-a="realCards" data-v="1"><span class="t">My own tarot deck</span><span class="s">You draw real cards, then tell the app which card it was.</span></button></div>
  ${G.real?`<div class="box2 small"><b>Get your deck ready.</b> Split the cards into five piles: the Major Arcana, Pentacles, Swords, Cups and Wands. Shuffle each pile so some cards are ${T("[[upright]]")} and some are ${T("[[reversed]]")}: split the pile, turn half of the cards upside down, then shuffle again.</div>`:""}
- <h3>Optional: how to reveal scenes</h3><div class="grid"><button class="opt ${!G.faceUp?"sel":""}" data-a="faceUp" data-v="0"><span class="t">One at a time</span><span class="s">More suspense. You flip each scene card when you reach it.</span></button><button class="opt ${G.faceUp?"sel":""}" data-a="faceUp" data-v="1"><span class="t">All three face up</span><span class="s">You see all three prompts at the start of a chapter and choose the order.</span></button></div>
+ ${G.duet?`<div class="box2 small"><b>Duet:</b> one of you is the Character and the other is the Author. In the story you are opponents, but as players you are not. Talk about each scene together and share ideas.</div>`:""}<h3>Optional: how to reveal scenes</h3><div class="grid"><button class="opt ${!G.faceUp?"sel":""}" data-a="faceUp" data-v="0"><span class="t">One at a time</span><span class="s">More suspense. You flip each scene card when you reach it.</span></button><button class="opt ${G.faceUp?"sel":""}" data-a="faceUp" data-v="1"><span class="t">All three face up</span><span class="s">You see all three prompts at the start of a chapter and choose the order.</span></button></div>
  ${pickRow("to:safety","to:spread","Next →")}`}
 
 function sSpread(){const have=G.spread.every(s=>s.c);
  return `<div class="step">Step 3 of 4: Create the Character Spread</div><div class="bar"><i style="width:60%"></i></div><h2>Who is in your story?</h2><p>${T("You are not alone in this story. You draw three [[major|Major Arcana]] cards. Each one is a character written by the Author: you, your [[friend|Friend]] and your [[foe|Foe]]. You keep them in front of you for the whole game.")}</p>
+ ${G.duet?`<div class="box2 small"><b>Duet:</b> the Author player draws or chooses the three cards and creates the Character, Friend and Foe. The Character player then adds an extra detail about each one.</div>`:""}
  ${G.real?`<p class="small">Draw three cards from your Major Arcana pile, then tell the app which cards they are.</p>`:(!have?`<div class="row"><button class="btn" data-a="drawSpread" data-tip="draw">🃏 Draw my three cards</button></div>`:"")}
  ${SPREAD_ROLE.map((r,i)=>{const s=G.spread[i];return `<div class="role"><h3>${r.n}</h3>${s.c?`<div class="cardrow">${mcard(s.c)}<div><div class="small">Ideas from this card:</div><div>${esc(MKW[s.c.n][s.c.r?1:0])}</div><p class="small">Use the picture, the name or these ideas. There is no wrong way to read a card.</p>${G.real?`<button class="btn sec small" data-a="pickSpread" data-v="${i}">Change card</button>`:""}</div></div>
- <div class="prompt">${T(r.q)} ${listen(r.q)}<div class="small">Hint: ${esc(r.h)}</div></div>${field("Your answer","spread."+i+".text",{rows:3,tip:i?"":"who"})}`:(G.real?`<button class="btn" data-a="pickSpread" data-v="${i}" data-tip="${i?"":"draw"}">Choose card</button>`:`<p class="small">Draw your cards first.</p>`)}</div>`}).join("")}
+ <div class="prompt">${T(r.q)} ${listen(r.q)}<div class="small">Hint: ${esc(r.h)}</div></div>${G.duet?`${chip(1)}${field("Author: describe this person. Who are they?","spread."+i+".text",{rows:3,tip:i?"":"who"})}${chip(0)}${field("Character: add one extra detail about them","spread."+i+".d",{rows:2})}`:field("Your answer","spread."+i+".text",{rows:3,tip:i?"":"who"})}`:(G.real?`<button class="btn" data-a="pickSpread" data-v="${i}" data-tip="${i?"":"draw"}">Choose card</button>`:`<p class="small">Draw your cards first.</p>`)}</div>`}).join("")}
  ${have?stuck():""}${pickRow("to:setup","to:note","Next →",!have,"next")}`}
 
 function sNote(){const n=G.note;
  return `<div class="step">Step 4 of 4: The Author's note</div><div class="bar"><i style="width:90%"></i></div>${im("author.jpg","tile tall","The Author tarot card: a figure in a waistcoat reading a book, with a marionette at their side")}<h2>A message from the Author</h2><p>${T("Before your story began, the [[author|Author]] left you a message. Draw one Major Arcana card to decide what kind of message it was.")}</p>
  ${n.c?`<div class="cardrow">${mcard(n.c)}<div>${mkw(n.c)}</div></div>`:(G.real?`<button class="btn" data-a="pickNote" data-tip="draw">Choose my card</button>`:`<div class="row"><button class="btn" data-a="drawNote" data-tip="draw">🃏 Draw a card</button></div>`)}
- ${n.c?NOTEQ.map((q,i)=>`<div class="prompt">${T(q)} ${listen(q)}</div>${field("Your answer","note.q"+i,{rows:3,tip:i?"":"answer"})}`).join("")+stuck():""}
+ ${n.c?NOTEQ.map((q,i)=>`${G.duet?chip(i===0?1:0):""}<div class="prompt">${T(q)} ${listen(q)}</div>${field("Your answer","note.q"+i,{rows:3,tip:i?"":"answer"})}`).join("")+stuck():""}
  <div class="small">The card goes back into the Major Arcana deck afterwards.</div>${pickRow("to:spread","startChap","Begin the story →",!n.c,"next")}`}
 
 function sChap(){const C=G.C;if(!C||!C.cards.length)return chapIntro();if(C.phase==="msg")return chapMsg();if(C.cur>=0)return sScene();return chapList()}
@@ -346,7 +352,7 @@ function sScene(){const C=G.C,s=C.cards[C.cur],i=C.cur,write=s.phase==="write";
  let h=`${chapHead()}<h2>Scene ${i+1}</h2><div class="cardrow">${ncard(G.ch,s.rank,s.rev)}<div><div class="prompt scenep" data-tip="prompt">${promptHTML(G.ch,s.rank,s.rev,s.def,s.defOn)} ${listen(promptPlain(G.ch,s.rank,s.rev,s.def,s.defOn))}</div><div class="small">The ${T("[[underlined|underlined part]]")} is the part you can change.</div></div></div>`;
  s.auth.forEach((a,k)=>{h+=`<div class="authbox"><b>How the Author responded:</b><div class="cardrow">${mcard(a,true)}<div>${mkw(a)}<div class="small">Does the Author indulge you or use your own words against you? The Author still holds the pen.</div></div></div></div>`});
  if(!write){
-  h+=`<h3>Your powers</h3><div class="row">`;
+  h+=`<h3>Your powers</h3>${G.duet?`<p class="small">${esc(nm(0))} (the Character) decides whether to use a power. The Author player then draws the response card.</p>`:""}<div class="row">`;
   h+=`<button class="btn" data-a="useRev" data-tip="rev" ${C.usedRev||s.pend>0?"disabled":""}>🔄 Use my Reversal${C.usedRev?" (used)":""}</button>`;
   h+=`<button class="btn" data-a="useDef" data-tip="def" ${C.usedDef||s.pend>0||s.defEdit?"disabled":""}>✋ Use my Defiance${C.usedDef?" (used)":""}</button></div>`;
   h+=`<p class="small">${T("[[reversal|Reversal]]: flip the card to the other version of the prompt. [[defiance|Defiance]]: replace the underlined part with anything you want.")}</p>`;
@@ -354,23 +360,25 @@ function sScene(){const C=G.C,s=C.cards[C.cur],i=C.cur,write=s.phase==="write";
   if(s.pend>0)h+=`<div class="prompt">The Author noticed you changed the story. Draw a Major Arcana card to see how they respond.</div><div class="row">${G.real?`<button class="btn" data-a="pickAuth" data-tip="draw">Choose the card I drew</button>`:`<button class="btn" data-a="drawAuth" data-tip="draw">🃏 Draw the Author's response</button>`}</div>`;
   h+=`<div class="row end"><span>${!s.used&&!s.defEdit?`<button class="btn sec small" data-a="skipScene">I would rather not: draw another card</button>`:""}</span><button class="btn" data-a="toWrite" data-tip="next" ${s.pend>0||s.defEdit?"disabled":""}>Write the scene →</button></div>`}
  else{
-  h+=`<p>${T("Use the prompt"+(s.auth.length?" and the Author's response":"")+" to decide how the scene plays out, then record what happens to your Character.")}</p>${field("Write the scene","C.cards."+i+".text",{rows:7,hint:"A few sentences is plenty.",tip:"answer"})}${stuck()}
+  h+=`<p>${T("Use the prompt"+(s.auth.length?" and the Author's response":"")+" to decide how the scene plays out, then record what happens to your Character.")}</p>${G.duet?`${chip(1)}${field("Author: describe how the scene plays out","C.cards."+i+".text",{rows:6,hint:"Use the prompt and any changes the Character made. You can also write it together.",tip:"answer"})}${chip(0)}${field("Character: what do you think about what just happened?","C.cards."+i+".react",{rows:3})}`:field("Write the scene","C.cards."+i+".text",{rows:7,hint:"A few sentences is plenty.",tip:"answer"})}${stuck()}
   <div class="row end"><button class="btn sec" data-a="toRead">← Back</button><button class="btn" data-a="finishScene" data-tip="next">Finish this scene →</button></div>`}
  return h}
 
-function chapMsg(){const C=G.C;return `${chapHead()}<h2>A message from the Author</h2><p>${T("The scenes are done. Your [[author]] leaves you a message, on purpose or by accident. Draw a Major Arcana card to decide what it is about.")}</p>
- <div class="prompt">${esc(CHAP[G.ch].msg)} ${listen(CHAP[G.ch].msg)}</div>
- ${C.msg.c?`<div class="cardrow">${mcard(C.msg.c)}<div>${mkw(C.msg.c)}<p class="small">How does the message reach you? You can show it as a short scene if you like.</p></div></div>${field("Your answer","C.msg.text",{rows:5,tip:"answer"})}${stuck()}`:(G.real?`<button class="btn" data-a="pickMsg" data-tip="draw">Choose the card I drew</button>`:`<div class="row"><button class="btn" data-a="drawMsg" data-tip="draw">🃏 Draw a card</button></div>`)}
+function chapMsg(){const C=G.C,d=G.duet;return `${chapHead()}<h2>A message from the Author</h2><p>${d?T("The scenes are done. The [[author|Author]] player may draw a Major Arcana card for inspiration, then tells the Character the message. The Character can choose whether to reply."):T("The scenes are done. Your [[author]] leaves you a message, on purpose or by accident. Draw a Major Arcana card to decide what it is about.")}</p>
+ ${d?chip(1):""}<div class="prompt">${esc(CHAP[G.ch].msg)} ${listen(CHAP[G.ch].msg)}</div>
+ ${C.msg.c?`<div class="cardrow">${mcard(C.msg.c)}<div>${mkw(C.msg.c)}<p class="small">How does the message reach the Character? You can show it as a short scene if you like.</p></div></div>`:(G.real?`<button class="btn" data-a="pickMsg" data-tip="draw">Choose the card I drew</button>`:`<div class="row"><button class="btn" data-a="drawMsg" data-tip="draw">🃏 ${d?"Draw a card for inspiration (optional)":"Draw a card"}</button></div>`)}
+ ${(C.msg.c||d)?field(d?"Author: write the message":"Your answer","C.msg.text",{rows:5,tip:"answer"})+stuck():""}
+ ${d?chip(0)+field("Character: reply, if you want to (optional)","C.msg.reply",{rows:3}):""}
  <div class="small">When you continue, the three scene cards are set aside, the ${suitName()} deck is put away, and the Major Arcana cards are shuffled back together (except your Spread).</div>
- ${pickRow("","endChap",G.ch<3?"Next chapter →":"On to chapter 5 →",!C.msg.c,"next")}`}
+ ${pickRow("","endChap",G.ch<3?"Next chapter →":"On to chapter 5 →",!C.msg.c&&!d,"next")}`}
 
 function sC5(){const e=G.end;
  return `${im("shelf.jpg","tile","A bookcase full of books")}<div class="step">Chapter 5: The Resolution</div><div class="bar"><i style="width:95%"></i></div><h2>Confront your Author</h2><p>Your story is over. It is time to meet your Author. Put the Major Arcana deck aside. The Author cannot use it here.</p><p>Your Author wrote parts of themself into the story, on purpose or without noticing. Answer these questions.</p>
- ${C5.map((q,i)=>`<div class="prompt">${T(q)} ${listen(q)}</div>${field("Your answer","end.a"+i,{rows:3,tip:i?"":"answer"})}`).join("")}${stuck()}
+ ${G.duet?chip(1):""}${C5.map((q,i)=>`<div class="prompt">${T(q)} ${listen(q)}</div>${field("Your answer","end.a"+i,{rows:3,tip:i?"":"answer"})}`).join("")}${stuck()}
  <h3>The confrontation</h3><div class="prompt">${C5FINAL.slice(0,3).map(esc).join(" ")} You act <u class="${e.used?"def":""}">${e.used?esc(e.defOn&&e.def?e.def:"…in your own words…"):"without mercy"}</u>.</div>
  ${!e.used&&!e.defEdit?`<div class="row"><button class="btn" data-a="useDef5">✋ Use my last Defiance</button></div><p class="small">You have one Defiance. You can replace “without mercy” with anything you want.</p>`:""}
  ${e.defEdit?`<div class="box2">${PP()?pnote("Decide how you act, write it on your paper, then press Confirm."):`<label class="l" for="d5">How do you act instead of “without mercy”?</label><input type="text" id="d5" data-b="end.def" value="${esc(e.def)}" placeholder="for example: with forgiveness">`}<div class="row"><button class="btn" data-a="confirmDef5">Confirm</button><button class="btn sec" data-a="cancelDef5">Cancel</button></div></div>`:""}
- ${field("What do you say and do to your Author?","end.final",{rows:8,hint:"This is your moment. Take your time.",tip:"final"})}
+ ${G.duet?chip(0):""}${field("What do you say and do to your Author?","end.final",{rows:8,hint:"This is your moment. Take your time.",tip:"final"})}
  <div class="row end"><span></span><button class="btn" data-a="to" data-v="checkin" data-tip="next">Finish →</button></div>`}
 
 function sCheckin(){return `<div style="text-align:center">${im("quill.jpg","tile","A quill, an inkwell and a sheet of paper")}<h2>Check in with yourself</h2><p class="lead">Your story is over. Take a quiet moment before you read it back.</p><div class="breath" aria-hidden="true"></div><p>How are you feeling? If any part of the game felt heavy, it is fine to take a break, move around, or talk to someone you trust.</p><div class="row" style="justify-content:center"><button class="btn" data-a="to" data-v="journal" data-tip="next">Finish</button></div></div>`}
@@ -421,10 +429,12 @@ function pickerModal(){const P=PICK,names=P.kind==="maj"?MAJ:RANKS.map(r=>r+" of
 function openPick(kind,title,cb){PICK={kind,title,n:-1,r:false,cb};pickerModal()}
 
 /* ---------- ACTIONS ---------- */
-function newChap(){G.C={cards:[],cur:-1,usedRev:false,usedDef:false,phase:"scenes",msg:{c:null,text:""},deck:[]}}
-function mkScene(rank,rev,flipped){return{rank,rev,orig:rev,flipped,def:"",defOn:false,defEdit:false,auth:[],pend:0,text:"",done:false,phase:"read",used:false}}
+function newChap(){G.C={cards:[],cur:-1,usedRev:false,usedDef:false,phase:"scenes",msg:{c:null,text:"",reply:""},deck:[]}}
+function mkScene(rank,rev,flipped){return{rank,rev,orig:rev,flipped,def:"",defOn:false,defEdit:false,auth:[],pend:0,text:"",react:"",done:false,phase:"read",used:false}}
 const A={
- start(){modal(`<h2>How do you want to play?</h2><div class="modes"><button class="opt" data-a="begin" data-v="screen"><span class="t">Play on screen</span><span class="s">Type your answers into the app. It keeps your story and you can download it at the end.</span></button><button class="opt" data-a="begin" data-v="paper"><span class="t">Play on paper</span><span class="s">Write on your own paper. You get the same prompts and help, but no typing boxes. Press Next when you have written your answer.</span></button></div><div class="row"><button class="btn sec" data-a="closeModal">Cancel</button></div>`)},
+ start(){modal(`<h2>How do you want to play?</h2><div class="modes"><button class="opt" data-a="begin" data-v="screen"><span class="t">Play on screen</span><span class="s">Type your answers into the app. It keeps your story and you can download it at the end.</span></button><button class="opt" data-a="begin" data-v="paper"><span class="t">Play on paper</span><span class="s">Write on your own paper. You get the same prompts and help, but no typing boxes. Press Next when you have written your answer.</span></button><button class="opt" data-a="duetSetup"><span class="t">Duet (2 players)</span><span class="s">One of you is the Character and one is the Author. You take turns on one shared screen.</span></button></div><div class="row"><button class="btn sec" data-a="closeModal">Cancel</button></div>`)},
+ duetSetup(){closeModal();modal(`<h2>Duet game</h2><p>One of you plays the <b>Character</b>. The other plays the <b>Author</b>. You share one screen and take turns typing.</p><label class="l" for="dn0">Character player name</label><input type="text" id="dn0" placeholder="Character player"><label class="l" for="dn1">Author player name</label><input type="text" id="dn1" placeholder="Author player"><label class="l" for="dpaper">How do you want to write?</label><select id="dpaper"><option value="screen">Type into the app</option><option value="paper">Write on paper</option></select><div class="row"><button class="btn" data-a="duetBegin">Start duet game</button><button class="btn sec" data-a="closeModal">Cancel</button></div>`)},
+ duetBegin(){const n0=(($("#dn0")||{}).value||"").trim()||"Character player",n1=(($("#dn1")||{}).value||"").trim()||"Author player",paper=($("#dpaper")||{}).value==="paper";closeModal();G=newGame();G.duet=true;G.names=[n0,n1];G.paper=paper;go("safety")},
  begin(v){closeModal();G=newGame();G.paper=v==="paper";go("safety")},
  cont(){G=ld(KEY);render()},
  home(){if(!G)return;ask("Go back to the title screen? Your game is saved.",()=>{if(TUT)A.tutExit();else{save();G=null;render()}},"Yes, go back")},
@@ -462,13 +472,13 @@ const A={
  toRead(){G.C.cards[G.C.cur].phase="read";render()},
  finishScene(){const C=G.C,s=C.cards[C.cur],mods=[];
   if(s.used){if(s.rev!==s.orig)mods.push("Reversal used");if(s.defOn)mods.push("Defiance used: "+(s.def||"own words"));if(s.rev===s.orig&&!s.defOn)mods.push("Reversal used")}
-  G.log.push({kind:"scene",ch:G.ch,n:C.cards.filter(c=>c.done).length+1,prompt:promptPlain(G.ch,s.rank,s.rev,s.def,s.defOn),mods,auth:s.auth.map(mname),text:s.text});
+  G.log.push({kind:"scene",ch:G.ch,n:C.cards.filter(c=>c.done).length+1,prompt:promptPlain(G.ch,s.rank,s.rev,s.def,s.defOn),mods,auth:s.auth.map(mname),text:s.text,react:s.react||""});
   s.done=true;C.cur=-1;scrollFlag=true;save();
   if(TUT){tutDone();return}render()},
  toMsg(){G.C.phase="msg";scrollFlag=true;save();render()},
  drawMsg(){G.C.msg.c=drawMaj();save();render()},
  pickMsg(){openPick("maj","Which card did you draw for the Author's message?",c=>{G.C.msg.c=c;save();render()})},
- endChap(){const C=G.C;G.log.push({kind:"msg",ch:G.ch,card:mname(C.msg.c),text:C.msg.text});
+ endChap(){const C=G.C;G.log.push({kind:"msg",ch:G.ch,card:mname(C.msg.c),text:C.msg.text,reply:C.msg.reply||""});
   if(G.ch<3){G.ch++;G.log.push({kind:"chap",ch:G.ch});G.maj=shuffle(pool());newChap();go("chap")}else{G.maj=[];G.C=null;go("c5")}},
  useDef5(){G.end.defEdit=true;render()},cancelDef5(){G.end.defEdit=false;G.end.def="";render()},
  confirmDef5(){G.end.defEdit=false;G.end.used=true;G.end.defOn=true;save();render()},

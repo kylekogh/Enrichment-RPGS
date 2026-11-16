@@ -131,6 +131,8 @@ body.paper .modal textarea,body.paper .modal input[type=text]{display:none}
 .artimg.wide{width:100%;max-height:170px;object-fit:cover;border-radius:12px;margin:0 0 12px}
 .artimg.banner{width:100%;height:120px;object-fit:cover;border-radius:12px;margin:0 0 12px}
 @media (prefers-reduced-motion:reduce){.pcard.flip{animation:none}}
+.turn{background:var(--soft);border:2px solid var(--accent);border-radius:12px;padding:8px 12px;margin:10px 0;font-weight:700}
+.orderrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:2px solid var(--line);border-radius:12px;padding:8px 12px;margin:8px 0}.orderrow .small{flex:1}
 </style>
 </head>
 <body>
@@ -256,8 +258,8 @@ const FONTS={verdana:"Verdana,Geneva,sans-serif",arial:"Arial,Helvetica,sans-ser
 const PP=()=>!!(G&&G.paper);
 const pnote=t=>`<div class="pnote"><b>✏️ Write on paper:</b> ${T(t)}</div>`;
 
-function newGame(){return{paper:false,real:false,stage:"safety",exp:{earth:false,disp:false},skip:{D:false,H:false,C:false,S:false},len:"std",
- des:{who:"",why:"",role:"",feat:""},craft:{name:"",feat:"",space:"",crewN:0,crew:""},earth:{changed:"",chall:"",fund:"",hope:""},
+function newGame(){return{group:false,players:[],k:0,order:[],rolls:[],pileEnds:[],pileStarts:[],total:0,lp:null,paper:false,real:false,stage:"safety",exp:{earth:false,disp:false,events:false,log:false},skip:{D:false,H:false,C:false,S:false},len:"std",
+ des:{who:"",why:"",role:"",feat:""},craft:{name:"",feat:"",space:"",crewN:0,crew:"",together:""},earth:{changed:"",chall:"",fund:"",hope:""},
  deck:[],card:null,n:0,pn:0,changed:false,hp:0,X:0,Y:0,cur:null,log:[],used:{D:{},S:[]},end:null}}
 function save(){if(TUT||!G)return;sv(KEY,G)}
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove("on"),1500)}
@@ -273,7 +275,7 @@ const suitTag=s=>`<span class="su su-${s}" aria-hidden="true">${SYM[s]}</span>`;
 
 /* ---------- FIELDS ---------- */
 function field0(label,path,o={}){const v=get(path)||"";return `<label class="l" for="${o.id||path}">${T(label)}</label>${o.hint?`<div class="hint">${T(o.hint)}</div>`:""}<${o.one?'input type="text"':'textarea'} id="${o.id||path}" data-b="${path}" ${o.tip?`data-tip="${o.tip}"`:""} placeholder="${esc(o.ph||"")}" ${o.one?`value="${esc(v)}">`:`rows="${o.rows||4}">${esc(v)}</textarea>`}`}
-function exFor(p){if(p==="cur.answer"&&G.cur)return EX["cur.answer:"+G.cur.suit];if(/^end\.a(\d)$/.test(p))return EX["end."+p.slice(-1)];return EX[p]}
+function exFor(p){if(/^cur\.pl\.\d+\.answer$/.test(p))return EX["cur.answer:"+G.cur.suit];if(/^cur\.gp\.\d+\.a$/.test(p))return EX["cur.a1"];if(/^cur\.gp\.\d+\.who$/.test(p))return "Maya and Tom";if(/^players\.\d+\.des\./.test(p))return EX[p.replace(/^players\.\d+\./,"")];if(/^players\.\d+\.left$/.test(p))return "Mum (always worried), my brother Tomas, my old teacher Ms Okafor";if(/^lp\.e\./.test(p))return "Planet 1: the air smelled of metal, but the lichen glowed at night. I logged three new species.";if(/^lp\.d\./.test(p))return "Mission control: the vote went through. Funding continues, but your reports now arrive two years late.";if(p==="cur.event")return "A sudden dust storm cuts off the ship radio for a day.";if(p==="craft.together")return "The galley, with its one round table and a shelf of old paperbacks.";if(p==="cur.answer"&&G.cur)return EX["cur.answer:"+G.cur.suit];if(/^end\.a(\d)$/.test(p))return EX["end."+p.slice(-1)];return EX[p]}
 function paperField(l,p){const ex=exFor(p),long=ex&&ex.length>30;
  return pnote(l)+(ex?(long?`<details class="small"><summary>See an example</summary><p>e.g. ${esc(ex)}</p></details>`:`<div class="small" style="margin:-6px 0 10px 4px">e.g. ${esc(ex)}</div>`):"")}
 function field(l,p,o){return PP()?paperField(l,p):field0(l,p,o)}
@@ -284,6 +286,7 @@ function qfields(list,ids){return list.map(([p,q])=>`<div class="prompt">${T(q)}
 /* ---------- DICE ---------- */
 const WORD={4:"four",6:"six",8:"eight",10:"ten",12:"twelve",20:"twenty"};
 function rollCfg(kind,slot){
+ if(kind==="gD"||kind==="gC"||kind==="gS"){const K=kind[1],L=LIST[K],die=SDIE[K],t=+slot;return{s:die,lab:v=>L[K==="D"?diFor(v):v-1].n,cb:v=>{const p=G.cur.pl[t];p.pi=K==="D"?diFor(v):v-1;p.roll=v;save();render()}}}
  const c=G.cur;
  if(kind==="D")return{s:10,lab:v=>DI[diFor(v)].n,cb:v=>{pickIdx("D",diFor(v),0,v)}};
  if(kind==="H")return{s:6,lab:v=>HP[v-1].n,cb:v=>{pickIdx("H",v-1,+slot,v)}};
@@ -330,6 +333,7 @@ const havePick=(kind,slot)=>kind==="H"?G.cur.p[slot].pi>=0:G.cur.pi>=0;
 
 /* ---------- STORY ---------- */
 function story(){
+ if(G.group)return gstory();
  const b=[];b.push(["h1","Universe at Your Door: The Traveller"]);
  b.push(["p",`${G.des.who||"The Traveller"}. Years on planets: ${G.X}. Years in Torpor: ${G.Y}.`]);
  b.push(["h2","Enter designation"]);DES_Q.forEach(([p,q])=>{b.push(["q",q]);b.push(["p",get(p)||"(not written)"])});
@@ -345,11 +349,11 @@ function storyHTML(){return story().map(([t,x])=>({h1:`<h2>${esc(x)}</h2>`,h2:`<
 function storyMD(){return story().map(([t,x])=>({h1:`# ${x}\n`,h2:`\n## ${x}\n`,h3:`\n### ${x}\n`,p:`${x}\n`,q:`**${x}**\n`}[t])).join("\n")}
 
 /* ---------- SCREENS ---------- */
-function pos(){if(!G)return"title";return G.stage==="play"?"play"+G.cur.suit+G.cur.k:G.stage}
+function pos(){if(!G)return"title";if(G.group&&G.stage==="gplay")return"gplay"+G.cur.suit+G.cur.k;return G.stage==="play"?"play"+G.cur.suit+G.cur.k:G.stage}
 const NOW={title:"Press Start new game, or try the guided tutorial first.",safety:"Read the note. Choose any suits you would rather skip, then press Next.",extras:"Switch on any extras you want, or press Skip.",earth:"Answer these questions about the Earth you left behind.",des:"Answer the four questions about who you are, then press Next.",craft:"Answer the questions about your ship and roll for your crew size.",deckset:"Choose how to play with cards and how long the game should be.",breath:"Take a slow breath, then press I'm ready.",draw:"Draw your next card. Its suit tells you what to write about.",playD1:"Roll a d10 to pick a prompt, or choose one yourself. Then write your answer.",playH1:"Roll a d20 to find out how many years pass on the planet.",playH2:"Pick your first prompt (roll a d6 or choose) and answer it.",playH3:"Pick your second prompt and answer it.",playH4:"Roll a d20 for the years you travel in Torpor.",playH5:"Read the message from Earth and answer.",playC1:"Roll a d4 to find the memento you keep, or choose one. Then answer.",playS1:"Roll a d8 to pick a memory, or choose one. Then answer.",end:"Your mission is ending. Roll a d6 and answer the final prompts.",checkin:"Check in with yourself, then press Finish.",journal:"Your mission is complete."};
 function header(){return `<header class="top"><span class="brand">Universe at Your Door</span>${G&&!TUT?`<button class="tb" data-a="home">Home</button>`:""}${G&&G.pn&&!PP()?`<button class="tb" data-a="story">Story so far</button>`:""}${G&&G.n?`<button class="tb" data-a="sheet">Mission sheet</button>`:""}<button class="tb" data-a="gloss">Words</button><button class="tb" data-a="help">Help</button><button class="tb" data-a="settings">Settings</button></header>`}
-function now(){return `<div class="now" role="status"><b>What do I do now?</b>${esc(NOW[pos()]||"")}</div>`}
-function prog(){if(!G||!["draw","play","end"].includes(G.stage))return"";
+function now(){return `<div class="now" role="status"><b>What do I do now?</b>${esc((G&&G.group&&NOWG[pos()])||NOW[pos()]||"")}</div>`}
+function prog(){if(!G||!["draw","play","end","gdraw","gplay","gend","glog"].includes(G.stage))return"";
  return `<div class="prog"><div class="pill">Planet ${G.pn||"none yet"}</div><div class="pill">Cards drawn: ${G.n}</div><div class="pill">${T("[[years|Years]]")}: ${G.X} on planets, ${G.Y} travelling</div></div>`}
 
 function sTitle(){const sv0=!TUT&&ld(KEY);
@@ -362,9 +366,10 @@ function sTitle(){const sv0=!TUT&&ld(KEY);
 function sSafety(){return `<div class="step">Step 1 of 5: A note before you start</div><div class="bar"><i style="width:10%"></i></div>${im("planet.jpg","wide","A glowing line drawing of a planet and stars")}<h2>Look after yourself</h2>
  <p>This game can include these themes:</p><ul>${THEMES.map(t=>`<li>${t}</li>`).join("")}</ul>
  <p>Some prompts ask about people you have lost or things that haunt you. You can <b>skip any prompt</b> at any time. You can also choose to <b>skip a whole suit</b> of cards. If something feels too heavy, stop and talk to someone you trust.</p>
+ ${G.group?`<p><b>Playing together:</b> check in with each other about topics you would like to avoid and themes you would like to explore. Anyone can skip a prompt at any time.</p>`:""}
  <h3>Skip a suit? (optional)</h3><p class="small">If you draw a skipped suit, the app just asks you to draw again.</p>
  ${SU.map(s=>`<label style="display:block;margin:8px 0"><input type="checkbox" data-a="skipSuit" data-v="${s}" ${G.skip[s]?"checked":""}> ${suitTag(s)} Skip ${SNAME[s]}: <b>${SHEAD[s]}</b>${s==="S"?" (memories, goodbyes and loss)":""}</label>`).join("")}
- <div class="row end"><button class="btn sec" data-a="home">Cancel</button><button class="btn" data-a="to" data-v="extras" data-tip="next">Next →</button></div>`}
+ <div class="row end"><button class="btn sec" data-a="home">Cancel</button><button class="btn" data-a="to" data-v="${G.group?"gextras":"extras"}" data-tip="next">Next →</button></div>`}
 
 function sExtras(){return `<div class="step">Step 2 of 5: Optional extras</div><div class="bar"><i style="width:25%"></i></div><h2>Any extras?</h2><p>These two extras come from the game's optional pages. They are off by default and you can ignore this screen.</p>
  <label style="display:block;margin:8px 0"><input type="checkbox" data-a="exp" data-v="earth" ${G.exp.earth?"checked":""}> <b>The world you leave behind:</b> a few questions about the Earth you came from and who paid for your mission.</label>
@@ -389,7 +394,7 @@ function sDeckset(){const L={short:["Short","about 30 minutes"],std:["Standard",
  ${G.real?`<div class="box2 small">Take a standard 52-card deck plus one Joker. Shuffle the Joker into the deck, about 10 cards down for a short game, 17 cards down for a standard game or 34 cards down for a long game.</div>`:`<h3>How long?</h3><div class="grid" data-tip="len">${Object.keys(L).map(k=>`<button class="opt ${G.len===k?"sel":""}" data-a="len" data-v="${k}"><span class="t">${L[k][0]}</span><span class="s">${L[k][1]}</span></button>`).join("")}</div>`}
  ${pickRow("to:craft","deckGo","Next →",false,"next")}`}
 
-function sBreath(){return `<div style="text-align:center"><div class="step">Ready</div><h2>Take a breath</h2><p>You are about to leave Earth behind. Everything you write is the record of your journey for a world that may never read it.</p><div class="breath" aria-hidden="true"></div><p>Breathe in and out slowly three times.</p><button class="btn" data-a="to" data-v="draw" data-tip="next">I'm ready</button></div>`}
+function sBreath(){return `<div style="text-align:center"><div class="step">Ready</div><h2>Take a breath</h2><p>You are about to leave Earth behind. Everything you write is the record of your journey for a world that may never read it.</p><div class="breath" aria-hidden="true"></div><p>Breathe in and out slowly three times.</p><button class="btn" data-a="to" data-v="${G.group?"gdraw":"draw"}" data-tip="next">I'm ready</button></div>`}
 
 function cardFace(c,flip){if(c==="JK")return `<div class="pcard joker ${flip?"flip":""}"><span class="rk">★</span><span class="ct">JOKER</span><span class="rk b">★</span></div>`;
  const s=c.slice(-1),r=c.slice(0,-1);return `<div class="pcard su-${s} ${flip?"flip":""}"><span class="rk">${r}</span><span class="sy">${SYM[s]}</span><span class="rk b">${r}</span></div>`}
@@ -428,6 +433,7 @@ function sJournal(){
  return `${im("land.jpg","banner","A pink planet over an alien mountain range")}<h2>Your story</h2><p>Well done. This is everything you wrote.</p><div class="row"><button class="btn" data-a="dl">⬇ Download (.md)</button><button class="btn sec" data-a="copy">Copy text</button><button class="btn sec" data-a="print">Print</button><button class="btn sec" data-a="home">Back to title</button></div><div class="journal">${storyHTML()}</div>`}
 
 function screen(){if(!G)return sTitle();
+ if(G.group&&GS[G.stage])return GS[G.stage]();
  return {safety:sSafety,extras:sExtras,earth:sEarth,des:sDes,craft:sCraft,deckset:sDeckset,breath:sBreath,draw:sDraw,play:sPlay,end:sEnd,checkin:sCheckin,journal:sJournal}[G.stage]()}
 
 /* ---------- TUTORIAL ---------- */
@@ -462,7 +468,7 @@ function glossModal(){modal(`<h2>Words</h2><p>Tap any dotted-underline word in t
 function helpModal(){modal(`<h2>Help</h2><p><b>How the game works:</b> create your Traveller and ship. Then draw cards. Each suit sends you to a different set of prompts: ♦ visit a planet, ♥ years pass, ♣ keep a memento, ♠ remember home. Some prompts use dice to choose. When the Joker appears, your mission ends.</p><div class="row">${TUT?"":`<button class="btn" data-a="tut">Replay the guided tutorial</button>`}<button class="btn sec" data-a="gloss">Open the word list</button><button class="btn sec" data-a="closeModal">Close</button></div><p class="small">Your game saves by itself in this browser. If you clear your browser data, your saved game is removed, so download your story at the end.</p>`)}
 function settingsModal(){const sel=(k,o)=>`<select data-set="${k}">${o.map(([v,l])=>`<option value="${v}" ${String(S[k])===String(v)?"selected":""}>${l}</option>`).join("")}</select>`;
  modal(`<h2>Settings</h2><label class="l">Text size</label>${sel("size",[[0.9,"Smaller"],[1,"Normal"],[1.2,"Large"],[1.4,"Extra large"]])}<label class="l">Font</label>${sel("font",[["verdana","Verdana (clear, wide)"],["arial","Arial"],["comic","Comic Sans (easy letter shapes)"],["serif","Georgia"]])}<label class="l">Colours</label>${sel("theme",[["dusk","Dusk (dark purple)"],["light","Light lavender"],["contrast","High contrast"]])}<label class="l">Dice</label>${sel("realDice",[["false","The app rolls for me"],["true","I roll my own dice first"]])}<div class="row"><button class="btn" data-a="closeModal">Done</button></div>`)}
-function sheetModal(){modal(`${im("planet.jpg","wide","A glowing line drawing of a planet and stars")}<h2>Mission sheet</h2><p><b>Traveller:</b> ${esc(G.des.who)||"(not written yet)"}</p><p><b>Role:</b> ${esc(G.des.role)||"(not written yet)"}</p><p><b>Ship:</b> ${esc(G.craft.name)||"(not named yet)"}${G.craft.crewN?`, ${G.craft.crewN} crew`:""}</p>
+function sheetModal(){if(G.group)return gSheet();modal(`${im("planet.jpg","wide","A glowing line drawing of a planet and stars")}<h2>Mission sheet</h2><p><b>Traveller:</b> ${esc(G.des.who)||"(not written yet)"}</p><p><b>Role:</b> ${esc(G.des.role)||"(not written yet)"}</p><p><b>Ship:</b> ${esc(G.craft.name)||"(not named yet)"}${G.craft.crewN?`, ${G.craft.crewN} crew`:""}</p>
  <div class="prog"><div class="pill">Planets visited: ${G.pn}</div><div class="pill">Cards drawn: ${G.n}</div></div><div class="prog"><div class="pill">Years on planets (X): ${G.X}</div><div class="pill">Years travelling in Torpor (Y): ${G.Y}</div><div class="pill">Total: ${G.X+G.Y}</div></div><div class="row"><button class="btn" data-a="closeModal">Close</button></div>`)}
 
 /* ---------- ACTIONS ---------- */
@@ -479,7 +485,7 @@ function handleSuit(s){
  if(s==="S")cur={suit:"S",k:1,pi:-1,roll:0,answer:"",dup:false};
  G.cur=cur;G.card=null;go("play")}
 const A={
- start(){modal(`<h2>How do you want to play?</h2><div class="modes"><button class="opt" data-a="begin" data-v="screen"><span class="t">Play on screen</span><span class="s">Type your answers into the app. It keeps your story and you can download it at the end.</span></button><button class="opt" data-a="begin" data-v="paper"><span class="t">Play on paper</span><span class="s">Write on your own paper. You get the same prompts and help, but no typing boxes. Press Next when you have written your answer.</span></button></div><div class="row"><button class="btn sec" data-a="closeModal">Cancel</button></div>`)},
+ start(){modal(`<h2>How do you want to play?</h2><div class="modes"><button class="opt" data-a="begin" data-v="screen"><span class="t">Play on screen</span><span class="s">Type your answers into the app. It keeps your story and you can download it at the end.</span></button><button class="opt" data-a="begin" data-v="paper"><span class="t">Play on paper</span><span class="s">Write on your own paper. You get the same prompts and help, but no typing boxes. Press Next when you have written your answer.</span></button><button class="opt" data-a="groupSetup"><span class="t">Group game (2 to 5 players)</span><span class="s">Play together on one shared screen. You pass the device around and take turns.</span></button></div><div class="row"><button class="btn sec" data-a="closeModal">Cancel</button></div>`)},
  begin(v){closeModal();G=newGame();G.paper=v==="paper";go("safety")},
  cont(){G=ld(KEY);render()},
  home(){if(!G)return;ask("Go back to the title screen? Your game is saved.",()=>{if(TUT)A.tutExit();else{save();G=null;render()}},"Yes, go back")},
@@ -524,6 +530,164 @@ const A={
 };
 function tutDone(){modal(`<h2>You finished a practice card!</h2><p>That is the whole game loop: draw a card, roll a die, write a short answer, and repeat. Hearts add years, Clubs give mementos, Spades bring memories of home. A full game ends when the Joker appears, and you can download your story.</p><div class="row"><button class="btn" data-a="tutStart">Start my real game</button><button class="btn sec" data-a="tutAgain">Try the tutorial again</button><button class="btn sec" data-a="tutExit">Back to the title</button></div>`)}
 A.tutStart=()=>{A.tutExit();A.start()};A.tutAgain=()=>{closeModal();G=newGame();G.stage="des";scrollFlag=true;render()};
+
+
+/* ---------- GROUP MODE (2 to 5 players, one shared screen) ---------- */
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+const GDISP="Dispatches from Earth are messages that reach the crew while they travel. They show an out-of-date picture of Earth. Each player in turn plays a non-player character and sends the crew a message from the Earth they left behind. For example: a news broadcast, someone from the group that funded the mission, or a person from another player's background (check with that player first, then pick one of the names they wrote down). The further you travel, the longer messages take to arrive.";
+const NOWG={gextras:"Choose any extras the group wants, or press Skip.",gearth:"Together, answer these questions about the Earth you left behind.",gdes:"Pass the device to the player named below. They answer the questions about their own character.",gcraft:"Together, answer the questions about your ship.",gdeckset:"Choose which cards you are using, then press Next.",gorder:"Check the turn order. The highest roll goes first.",gdraw:"The player named below is the Prompt Manager. They draw the next card.",glog:"Each player writes a short log. Then press Done.",gend:"All the cards have run out. Roll the d6 and answer together.",gplayD1:"Each player in turn rolls a d10 and answers. Pass the device when you are done.",gplayC1:"Each player in turn rolls a d4 and answers.",gplayS1:"Each player in turn rolls a d8 and answers.",gplayH1:"The Prompt Manager rolls a d20 for the years on the planet.",gplayH2:"The Prompt Manager picks a prompt. The crew talk it through. Add one or two more if you like.",gplayH3:"The Prompt Manager rolls a d20 for the years in Torpor."};
+const pname=i=>G.players[i]?G.players[i].name:"";
+const mgrNext=()=>pname(G.order[G.n%G.order.length]);
+function legendHTML(){return `<div class="legend">${SU.map(s=>`<div class="lg"><b>${suitTag(s)} ${SHEAD[s]}</b><span>${SHELP[s]}</span></div>`).join("")}</div>`}
+function turnBar(t,seq){return `<div class="turn" role="status">🎲 <b>${esc(pname(seq[t]))}</b>'s turn (${t+1} of ${seq.length})</div>`}
+
+function buildGroupDeck(){
+ const R=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+ const dia=shuffle(R.map(r=>r+"D")).slice(0,4);let rest=[];
+ ["H","C","S"].forEach(s=>{const cs=shuffle(R.map(r=>r+s));rest=rest.concat(cs.slice(1+rnd(4)))});
+ shuffle(rest);const piles=[[],[],[],[]];rest.forEach((c,i)=>piles[i%4].push(c));
+ const deck=[],ends=[],starts=[];
+ piles.forEach(p=>{starts.push(deck.length+1);deck.push(dia.shift());p.forEach(c=>deck.push(c));ends.push(deck.length)});
+ G.deck=deck;G.pileEnds=ends;G.pileStarts=starts;G.total=deck.length}
+function gRollOrder(){const r=G.players.map(()=>1+rnd(20));G.rolls=r;
+ G.order=G.players.map((_,i)=>i).sort((a,b)=>r[b]-r[a]||(rnd(2)?1:-1))}
+function gNext(){
+ if(G.real){go("gdraw");return}
+ if(G.exp.log&&G.pileEnds.includes(G.n)&&G.n<G.total){G.lp={e:G.players.map(()=>""),d:G.players.map(()=>"")};go("glog");return}
+ if(!G.deck.length){go("gend");return}
+ go("gdraw")}
+function gHandle(s){
+ if(s==="JK"){go("gend");return}
+ if(G.skip[s]){toast("Skipping "+SNAME[s]);G.card=null;gNext();return}
+ const len=G.order.length,mp=(G.n-1)%len,seq=G.order.slice(mp).concat(G.order.slice(0,mp));
+ const pl=()=>seq.map(()=>({pi:-1,roll:0,answer:""}));let c;
+ if(s==="D"){if(G.pn===0||G.changed||G.pileStarts.includes(G.n)){G.pn++;G.changed=false;G.hp=0}c={suit:"D",k:1,pn:G.pn,seq,t:0,pl:pl(),event:""}}
+ if(s==="H"){G.hp++;c={suit:"H",k:1,seq,x:0,y:0,gp:[{pi:-1,who:"",a:""}],why:"",event:""}}
+ if(s==="C")c={suit:"C",k:1,seq,t:0,pl:pl(),event:""};
+ if(s==="S")c={suit:"S",k:1,seq,t:0,pl:pl(),event:""};
+ G.cur=c;G.card=null;go("gplay")}
+
+function gSetupModal(n,keep){n=n||3;const old=keep||[];
+ modal(`<h2>Group game</h2><p>Play together on one shared screen. You pass the device around, so you take turns typing. Pick how many players there are (2 to 5) and type your names.</p>
+ <div class="row">${[2,3,4,5].map(k=>`<button class="btn ${k===n?"":"sec"}" data-a="gcount" data-v="${k}">${k} players</button>`).join("")}</div>
+ ${Array.from({length:n},(_,i)=>`<label class="l" for="gn${i}">Player ${i+1} name</label><input type="text" id="gn${i}" value="${esc(old[i]||"")}" placeholder="Player ${i+1}">`).join("")}
+ <label class="l" for="gpaper">How do you want to write?</label><select id="gpaper"><option value="screen">Type into the app</option><option value="paper" ${PAPERSEL?"selected":""}>Write on paper</option></select>
+ <div class="row"><button class="btn" data-a="groupBegin" data-v="${n}">Start group game</button><button class="btn sec" data-a="closeModal">Cancel</button></div>`)}
+let PAPERSEL=false;
+
+/* screens */
+function gExtras(){return `<div class="step">Step 2 of 5: Optional extras</div><div class="bar"><i style="width:25%"></i></div><h2>Any extras for the group?</h2><p>These come from the group rules. They are off by default. Agree as a group.</p>
+ <label style="display:block;margin:8px 0"><input type="checkbox" data-a="exp" data-v="events" ${G.exp.events?"checked":""}> <b>Events:</b> the group can introduce set events on a planet or in orbit, such as a storm, a ship fault or a visit from an alien population.</label>
+ <label style="display:block;margin:8px 0"><input type="checkbox" data-a="exp" data-v="log" ${G.exp.log?"checked":""}> <b>Log phases:</b> when a small deck is finished, each player writes a short log of their time on the planet, as a report sent home to Earth.</label>
+ <label style="display:block;margin:8px 0;margin-left:22px"><input type="checkbox" data-a="exp" data-v="disp" ${G.exp.disp?"checked":""}> <b>Dispatches from Earth</b> (needs Log phases): each log phase ends with messages from Earth.</label>
+ <div class="row end"><button class="btn sec" data-a="to" data-v="safety">← Back</button><button class="btn" data-a="to" data-v="gearth" data-tip="next">Next →</button></div>`}
+function gEarth(){return `<div class="step">Step 3 of 5: The world you leave behind</div><div class="bar"><i style="width:40%"></i></div><h2>Earth, 30 years from now</h2><p>The world that sent you is part of the story. Decide together what it is like. This also sets the tone of your story.</p>${qfields(EARTH_Q)}${stuck()}${pickRow("to:gextras","to:gdes")}`}
+function gDes(){const k=G.k,p=G.players[k],last=k===G.players.length-1;
+ return `<div class="step">Step 4 of 5: Enter designation (${k+1} of ${G.players.length})</div><div class="bar"><i style="width:${50+k/G.players.length*20}%"></i></div><div class="turn">📱 Pass the device to <b>${esc(p.name)}</b></div><h2>Who is ${esc(p.name)}'s character?</h2><p>${T("Your character is a [[traveller]] on the crew: a scientist, engineer or doctor. Your [[designation]] is your ID on the mission.")}</p>
+ ${DES_Q.map(([q0,q])=>`<div class="prompt">${T(q)} ${listen(q)}</div>${field("Your answer","players."+k+"."+q0,{rows:3})}`).join("")}
+ <div class="prompt">Who are you leaving behind? Write down 1 to 4 names (roll a d4) or 1 to 6 names (roll a d6) of people you are leaving behind, and how they are connected to you. Pick the die by how many close connections you feel your character has. Put the names where everyone can see them.</div>${field("Names and connections","players."+k+".left",{rows:3})}${stuck()}
+ <div class="row end"><button class="btn sec" data-a="gdprev">← Back</button><button class="btn" data-a="gdnext" data-tip="next">${last?"Next: the ship →":"Next player →"}</button></div>`}
+function gCraft(){return `<div class="step">Step 5 of 5: Enter craft</div><div class="bar"><i style="width:80%"></i></div><h2>Your ship</h2><p>${T("Together, decide what your [[craft]] is like.")}</p>${CRAFT_Q.slice(0,2).map(([p,q])=>`<div class="prompt">${T(q)} ${listen(q)}</div>${field("Your answer",p,{rows:3})}`).join("")}
+ <div class="prompt">Where is the place that you all come together, and what does it hold?</div>${field("Your answer","craft.together",{rows:3})}
+ <div class="prompt">Are there other crew members outside your group that you will play and manage together? (optional)</div>${field("Your answer","craft.crew",{rows:3})}${stuck()}${pickRow("to:gdes","to:gdeckset")}`}
+function gDeckset(){return `<div class="step">Your deck</div><div class="bar"><i style="width:90%"></i></div><h2>Cards</h2><p>The group deck is built from four small piles. Each pile starts with a Diamond card, which means a new planet.</p>
+ <div class="grid" data-tip="cards"><button class="opt ${!G.real?"sel":""}" data-a="realCards" data-v="0"><span class="t">Virtual deck</span><span class="s">The app builds the deck and draws for you.</span></button><button class="opt ${G.real?"sel":""}" data-a="realCards" data-v="1"><span class="t">Our own deck</span><span class="s">You build and draw from real cards. You tell the app which suit you drew.</span></button></div>
+ ${G.real?`<div class="box2 small"><b>Build the deck:</b> (1) Take four Diamond cards out of the deck. (2) For each of the other three suits, roll a d4 and take that many cards of the suit out of play. (3) Shuffle the Hearts, Clubs and Spades together and deal them into four piles. (4) Put one Diamond on top of each pile, then stack the four piles in any order. Play ends when all the cards run out.</div>`:`<div class="box2 small">The app builds the deck the same way: four Diamonds, then a few cards removed from each other suit, dealt into four piles. Play ends when all the cards run out.</div>`}
+ ${pickRow("to:gcraft","gdeckGo","Next →",false,"next")}`}
+function gOrder(){return `<div class="step">Turn order</div><div class="bar"><i style="width:95%"></i></div><h2>Who goes first?</h2><p>Everyone rolled a d20. The highest roll goes first. The player who draws a card is the <b>Prompt Manager</b>. They keep track of whose turn it is and encourage the next person to take their turn.</p>
+ <div data-tip="order">${G.order.map((pi,i)=>`<div class="orderrow"><b>${i+1}.</b> ${esc(pname(pi))} <span class="small">rolled ${G.rolls[pi]}</span> <button class="btn sec small" data-a="gmove" data-v="${i}|-1" ${i===0?"disabled":""} aria-label="Move up">↑</button><button class="btn sec small" data-a="gmove" data-v="${i}|1" ${i===G.order.length-1?"disabled":""} aria-label="Move down">↓</button></div>`).join("")}</div>
+ <p class="small">Prefer your own dice? Roll them and use the arrows to put everyone in order, highest roll first.</p>
+ <div class="row"><button class="btn sec" data-a="groll">Roll again for everyone</button></div>${pickRow("to:gdeckset","to:breath","I'm ready")}`}
+function gDraw(){const mgr=mgrNext();
+ if(G.real)return `<div class="step">Card ${G.n+1}</div><div class="turn">🃏 Prompt Manager: <b>${esc(mgr)}</b></div><h2>Draw a card</h2><p>${esc(mgr)}, draw the top card from your own deck. Tap what you drew.</p><div class="grid" data-tip="deck">${SU.map(s=>`<button class="opt" data-a="grealCard" data-v="${s}"><span class="t">${suitTag(s)} ${SNAME[s]}</span><span class="s">${SHEAD[s]}</span></button>`).join("")}</div>${legendHTML()}<div class="row end"><span>${G.exp.log?`<button class="btn sec small" data-a="gpile">A small deck is finished: start a log phase</button>`:""}</span><button class="btn sec small" data-a="gendNow">The deck is empty: end the mission</button></div>`;
+ if(G.card){const c=G.card,s=c.slice(-1),skipped=G.skip[s];
+  return `<div class="step">Card ${G.n} of ${G.total}</div><div class="turn">🃏 Prompt Manager: <b>${esc(pname(G.order[(G.n-1)%G.order.length]))}</b></div><div class="cardwrap">${cardFace(c,true)}</div><h2 style="text-align:center">${suitTag(s)} ${SHEAD[s]}</h2><p style="text-align:center">${skipped?"Your group chose to skip this suit. Move on.":esc(SHELP[s])}</p><div class="row" style="justify-content:center"><button class="btn" data-a="gcardGo" data-tip="next">${skipped?"Skip →":"Continue →"}</button></div>`}
+ return `<div class="step">Card ${G.n+1} of ${G.total}</div><div class="turn">🃏 Prompt Manager: <b>${esc(mgr)}</b></div><h2 style="text-align:center">${esc(mgr)}, draw the next card</h2><div class="cardwrap"><button class="pcard back" data-a="gdraw" data-tip="deck" aria-label="Draw a card"><span>Tap to draw</span></button></div><p class="small" style="text-align:center">${G.deck.length} cards left in the deck.</p>${legendHTML()}`}
+
+function gPickUI(k,t){const L=LIST[k],die=SDIE[k];
+ return `<div class="row"><button class="btn" data-tip="roll" data-a="roll" data-v="g${k}|${t}">🎲 Roll a d${die}</button></div><p class="small">Or choose one yourself:</p><div class="grid" data-tip="choose">${L.map((x,i)=>`<button class="opt num" data-a="gpick" data-v="${k}|${i}|${t}"><span class="dn">${k==="D"?x.r.join("-"):i+1}</span><span class="t">${esc(x.n)}</span></button>`).join("")}</div>`}
+function gShow(k,t){const c=G.cur,p=c.pl[t],x=LIST[k][p.pi],same=c.pl.map((o,j)=>j!==t&&o.pi===p.pi?pname(c.seq[j]):"").filter(Boolean);
+ return `<h3>${suitTag(k)} ${esc(x.n)}</h3><div class="prompt">${T(x.q)} ${listen(x.q)}${p.roll?`<div class="small">You rolled a ${p.roll}.</div>`:""}</div>
+ ${same.length?`<div class="box2 small">${esc(same.join(" and "))} ${same.length>1?"have":"has"} the same prompt. You can answer it together or each on your own.</div>`:""}
+ ${k==="S"?`<div class="box2 small">You can answer in general, or as a flashback. For a flashback, ask another player to join as someone from your story, tell them the mood of the scene, and act it out together.</div>`:""}
+ ${field("Your answer","cur.pl."+t+".answer",{rows:5,hint:"A few sentences is plenty.",tip:"answer"})}${stuck()}
+ <div class="row"><button class="btn sec small" data-a="gunpick" data-v="${t}">Pick a different prompt</button></div>`}
+function eventBox(){return G.exp.events?`<h3>Event (optional)</h3><p class="small">Decide together if an event happens on the planet or in orbit. It could come from the environment, the ship or an alien population. Play it out, or let it change how you each report on the world.</p>${field("What happens?","cur.event",{rows:3})}`:""}
+function gPlay(){const c=G.cur,k=c.suit,mgr=pname(c.seq[0]);
+ let h=`<div class="step">Card ${G.n} · ${SHEAD[k]} · Prompt Manager: ${esc(mgr)}</div>`;
+ if(k==="H")return h+gHeart();
+ const t=c.t,p=c.pl[t],n=c.seq.length,last=t===n-1;
+ h+=({D:`${im("land.jpg","banner","A pink planet over an alien mountain range")}<h2>${suitTag("D")} Planet ${c.pn}</h2><p>${T("Each player rolls a [[d10]] and adds an aspect of the [[planet]] you are visiting.")}</p>`,C:`<h2>${suitTag("C")} Mementos of worlds passed</h2><p>${T("Each player rolls a [[d4]] and answers the prompt. If you roll the same number as another player, you can answer together or on your own.")}</p>`,S:`<h2>${suitTag("S")} Memories from home</h2><p>${T("Each player rolls a [[d8]] and describes their answer. You do not have to write about it all at once.")}</p>`})[k];
+ h+=turnBar(t,c.seq)+(p.pi<0?gPickUI(k,t):gShow(k,t));
+ if(last&&p.pi>=0)h+=eventBox();
+ h+=`<div class="row end"><span>${t>0?`<button class="btn sec" data-a="gprev">← Back</button>`:""}</span><button class="btn" data-a="${last?"gfinish":"gnext"}" ${p.pi<0?"disabled":""} data-tip="next">${last?"Finish this card →":"Next player →"}</button></div>`;
+ return h}
+function gHeart(){const c=G.cur,k=c.k,mgr=pname(c.seq[0]);
+ let h=`<h2>${suitTag("H")} Light years with you</h2><div class="bar"><i style="width:${k/3*100}%"></i></div>`;
+ if(k===1)h+=`<p>${esc(mgr)}, as Prompt Manager, rolls a ${T("[[d20]]")} to see how many years the crew spent on the planet. This number is called X.</p><div class="row"><button class="btn" data-tip="roll" data-a="roll" data-v="X|0">🎲 Roll a d20</button>${c.x?`<span class="die" style="width:60px;height:60px;font-size:1.7em">${c.x}</span>`:""}</div>${c.x?`<div class="prompt"><b>${c.x} years</b> pass on the planet. In total you have spent <b>${G.X}</b> years on planets.</div>`:""}${pickRow("","gkn","Next →",!c.x,"next")}`;
+ if(k===2){h+=`<p>${esc(mgr)} picks a prompt to start the conversation. Say which crew members take part. When it is finished, other players can choose other prompts. Two or three is plenty.</p>`;
+  c.gp.forEach((g,i)=>{if(g.pi<0)h+=`<h3>Prompt ${i+1}</h3><div class="grid" data-tip="choose">${HP.map((x,j)=>`<button class="opt num" data-a="ghpick" data-v="${i}|${j}"><span class="dn">${j+1}</span><span class="t">${esc(x.n)}</span></button>`).join("")}</div>`;
+   else{const x=HP[g.pi];h+=`<h3>${suitTag("H")} ${esc(x.n)}</h3><div class="prompt">${T(x.q)} ${listen(x.q)}${x.h?`<div class="small">Hint: ${esc(x.h)}</div>`:""}</div>${field("Who takes part in this conversation?","cur.gp."+i+".who",{rows:2})}${field("What do you say or find out?","cur.gp."+i+".a",{rows:5,tip:i?"":"answer"})}<div class="row"><button class="btn sec small" data-a="ghunpick" data-v="${i}">Pick a different prompt</button></div>`}});
+  if(c.gp.length<3&&c.gp.every(g=>g.pi>=0))h+=`<div class="row"><button class="btn sec" data-a="gaddp">+ Add another prompt</button></div>`;
+  h+=pickRow("gkp","gkn","Next →",c.gp[0].pi<0,"next")}
+ if(k===3)h+=`<p>${esc(mgr)} rolls a ${T("[[d20]]")} to see how long the crew spends in ${T("[[torpor]]")} travelling to the next planet. This number is called Y.</p><div class="row"><button class="btn" data-tip="roll" data-a="roll" data-v="Y|0">🎲 Roll a d20</button>${c.y?`<span class="die" style="width:60px;height:60px;font-size:1.7em">${c.y}</span>`:""}</div>${c.y?`<div class="prompt"><b>${c.y} years</b> in Torpor. In total: ${G.X} years on planets and ${G.Y} travelling.</div>`:""}${G.hp>1?`<div class="prompt">You drew more than one Heart for this planet. Why did you go back?</div>${field("Your answer","cur.why",{rows:3})}`:""}${eventBox()}${pickRow("gkp","gfinish","Finish this card →",!c.y,"next")}`;
+ return h}
+function gLog(){return `<div class="step">Log phase</div><h2>Report back to Earth</h2><p>A small deck is finished. Before the next planet, each player writes a short log of their time on the planet, as it relates to their role. Write it as a report sent back to Earth.</p>
+ ${G.players.map((p,i)=>field(p.name+": your log","lp.e."+i,{rows:4})).join("")}
+ ${G.exp.disp?`<h3>Dispatches from Earth (optional)</h3><p class="small">${esc(GDISP)}</p>${G.players.map((p,i)=>field(p.name+": play a non-player character and send the crew a message","lp.d."+i,{rows:3})).join("")}`:""}
+ <div class="row end"><span></span><button class="btn" data-a="glogDone" data-tip="next">Done: next planet →</button></div>`}
+function gEnd(){const mg=mgrNext();
+ if(!G.end)return `${im("land.jpg","banner","A pink planet over an alien mountain range")}<div class="step">Mission end</div><h2>The cards have run out</h2><p>${T("The "+(G.real?"deck is empty":"cards have run out")+". "+mg+", who would have drawn next, rolls a [[d6]] to find your last actions. Then you answer the prompt together.")}</p><div class="row"><button class="btn" data-tip="roll" data-a="roll" data-v="E|0">🎲 Roll a d6</button></div><div class="small">1 or 2: Ship failure · 3 or 4: New crew · 5 or 6: Earth calling</div>`;
+ return sEnd()}
+function gSheet(){modal(`${im("planet.jpg","wide","A glowing line drawing of a planet and stars")}<h2>Mission sheet</h2><p><b>Crew:</b> ${G.players.map(p=>esc(p.name)).join(", ")}</p>${G.players.map(p=>`<p><b>${esc(p.name)}:</b> ${esc(p.des.who)||"(not written yet)"}${p.des.role?" ("+esc(p.des.role)+")":""}${p.left?`<br><span class="small">Leaving behind: ${esc(p.left)}</span>`:""}</p>`).join("")}<p><b>Ship:</b> ${esc(G.craft.name)||"(not named yet)"}</p>
+ <div class="prog"><div class="pill">Planets visited: ${G.pn}</div><div class="pill">Cards drawn: ${G.n}${G.total?" of "+G.total:""}</div></div><div class="prog"><div class="pill">Years on planets (X): ${G.X}</div><div class="pill">Years travelling in Torpor (Y): ${G.Y}</div><div class="pill">Total: ${G.X+G.Y}</div></div><div class="row"><button class="btn" data-a="closeModal">Close</button></div>`)}
+function gstory(){const b=[];b.push(["h1","Universe at Your Door: The Traveller (group game)"]);
+ b.push(["p","Crew: "+G.players.map(p=>p.name).join(", ")+". Years on planets: "+G.X+". Years in Torpor: "+G.Y+"."]);
+ if(EARTH_Q.some(([p])=>get(p))){b.push(["h2","The world you left behind"]);EARTH_Q.forEach(([p,q])=>{if(get(p)){b.push(["q",q]);b.push(["p",get(p)])}})}
+ b.push(["h2","The crew"]);
+ G.players.forEach(p=>{b.push(["h3",p.name]);DES_Q.forEach(([q0,q])=>{b.push(["q",q]);b.push(["p",p.des[q0.slice(4)]||"(not written)"])});b.push(["q","People you are leaving behind"]);b.push(["p",p.left||"(not written)"])});
+ b.push(["h2","The ship"]);CRAFT_Q.slice(0,2).forEach(([p,q])=>{b.push(["q",q]);b.push(["p",get(p)||"(not written)"])});
+ if(G.craft.together){b.push(["q","Where do you all come together?"]);b.push(["p",G.craft.together])}
+ if(G.craft.crew){b.push(["q","Other crew members you play together"]);b.push(["p",G.craft.crew])}
+ b.push(["h2","Log"]);
+ G.log.forEach(e=>{if(e.lp){b.push(["h3","Log phase after planet "+e.pn]);e.e.forEach(x=>{b.push(["q",x.name+": log"]);b.push(["p",x.text||"(not written)"])});e.d.forEach(x=>{if(x.text){b.push(["q",x.name+": dispatch from Earth"]);b.push(["p",x.text])}});return}
+  b.push(["h3",`Card ${e.n}: ${SYM[e.s]} ${SHEAD[e.s]}${e.pn?` (Planet ${e.pn})`:""}`]);e.items.forEach(it=>{b.push(["q",it.q+(it.r?` (rolled ${it.r})`:"")]);if(it.a)b.push(["p",it.a])})});
+ if(G.end&&G.end.i>=0){const E=ENDS[G.end.i];b.push(["h2",`Mission end: ${E.n}`]);E.q.forEach((q,i)=>{b.push(["q",q]);if(G.end["a"+i])b.push(["p",G.end["a"+i]])})}
+ return b}
+const GS={gextras:gExtras,gearth:gEarth,gdes:gDes,gcraft:gCraft,gdeckset:gDeckset,gorder:gOrder,gdraw:gDraw,gplay:gPlay,glog:gLog,gend:gEnd};
+
+/* actions */
+Object.assign(A,{
+ gcount(v){const old=[...document.querySelectorAll("#modal input[type=text]")].map(i=>i.value);PAPERSEL=($("#gpaper")||{}).value==="paper";gSetupModal(+v,old)},
+ groupSetup(){closeModal();PAPERSEL=false;gSetupModal(3,[])},
+ groupBegin(v){const n=+v,names=Array.from({length:n},(_,i)=>(($("#gn"+i)||{}).value||"").trim()||"Player "+(i+1));const paper=($("#gpaper")||{}).value==="paper";
+  closeModal();G=newGame();G.group=true;G.paper=paper;G.exp.earth=true;G.exp.events=false;G.exp.log=false;
+  G.players=names.map(nm=>({name:nm,des:{who:"",why:"",role:"",feat:""},left:""}));go("safety")},
+ gdnext(){if(G.k<G.players.length-1){G.k++;go("gdes")}else go("gcraft")},
+ gdprev(){if(G.k>0){G.k--;go("gdes")}else go("gearth")},
+ gdeckGo(){if(!G.real)buildGroupDeck();else{G.deck=[];G.pileEnds=[];G.pileStarts=[]}gRollOrder();go("gorder")},
+ groll(){gRollOrder();render()},
+ gmove(v){const[i,d]=v.split("|").map(Number),j=i+d;if(j<0||j>=G.order.length)return;[G.order[i],G.order[j]]=[G.order[j],G.order[i]];save();render()},
+ gdraw(){if(!G.deck.length){go("gend");return}G.card=G.deck.shift();G.n++;save();render()},
+ gcardGo(){const c=G.card;gHandle(c==="JK"?"JK":c.slice(-1))},
+ grealCard(v){G.n++;gHandle(v)},
+ gendNow(){ask("End the mission now? Only do this when your deck has run out.",()=>go("gend"),"Yes, end it")},
+ gpile(){G.changed=true;G.lp={e:G.players.map(()=>""),d:G.players.map(()=>"")};go("glog")},
+ gpick(v){const[k,i,t]=v.split("|"),p=G.cur.pl[+t];p.pi=+i;p.roll=0;save();render()},
+ gunpick(v){const p=G.cur.pl[+v];p.pi=-1;p.roll=0;render()},
+ gnext(){G.cur.t++;scrollFlag=true;save();render()},gprev(){G.cur.t--;scrollFlag=true;render()},
+ gkn(){G.cur.k++;scrollFlag=true;save();render()},gkp(){G.cur.k--;scrollFlag=true;render()},
+ ghpick(v){const[i,j]=v.split("|").map(Number);G.cur.gp[i].pi=j;save();render()},
+ ghunpick(v){G.cur.gp[+v].pi=-1;render()},
+ gaddp(){G.cur.gp.push({pi:-1,who:"",a:""});render()},
+ gfinish(){const c=G.cur,items=[];
+  if(c.suit==="H"){items.push({q:"Years on the planet (X)",a:c.x+" years",r:c.x});c.gp.forEach(g=>{if(g.pi>=0){const x=HP[g.pi];items.push({q:x.n+": "+x.q+(g.who?" (taking part: "+g.who+")":""),a:g.a})}});items.push({q:"Years travelling in Torpor (Y)",a:c.y+" years",r:c.y});if(c.why)items.push({q:"Why did you go back?",a:c.why});G.changed=true}
+  else c.pl.forEach((p,j)=>{if(p.pi>=0){const x=LIST[c.suit][p.pi];items.push({q:pname(c.seq[j])+", "+x.n+": "+x.q,a:p.answer,r:p.roll})}});
+  if(c.event)items.push({q:"Group event",a:c.event});
+  G.log.push({n:G.n,s:c.suit,pn:c.suit==="H"?0:(c.pn||G.pn),items});G.cur=null;gNext()},
+ glogDone(){const lp=G.lp;G.log.push({lp:true,pn:G.pn,e:G.players.map((p,i)=>({name:p.name,text:lp.e[i]})),d:G.exp.disp?G.players.map((p,i)=>({name:p.name,text:lp.d[i]})):[]});G.lp=null;
+  if(!G.real&&!G.deck.length)go("gend");else go("gdraw")}
+});
 
 /* ---------- EVENTS ---------- */
 document.addEventListener("click",e=>{
